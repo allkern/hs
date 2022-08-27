@@ -42,7 +42,7 @@ int main(int argc, const char* argv[]) {
 
     parser.parse();
 
-    contextualizer.init(&parser);
+    contextualizer.init(&parser, &error_logger);
     contextualizer.contextualize();
 
     return 0;

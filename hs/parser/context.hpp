@@ -9,16 +9,25 @@
 #include <string>
 #include <stack>
 
+#define WARNING(msg, expr) \
+    if (m_logger) m_logger->print_warning( \
+        "context", \
+        msg, \
+        expr->line, expr->offset, expr->len, true \
+    );
+
 namespace hs {
     struct contextualizer_t {
         parser_output_t* m_po;
         std::stack <std::string> m_scope;
+        error_logger_t* m_logger;
 
         std::vector <std::string> m_vars_in_global_scope;
         std::vector <std::string> m_vars_in_current_scope;
 
-        void init(parser_t* parser) {
+        void init(parser_t* parser, error_logger_t* logger) {
             m_po = parser->get_output();
+            m_logger = logger;
 
             m_scope.push("<global>");
         }
@@ -51,9 +60,32 @@ namespace hs {
                 case EX_FUNCTION_DEF: {
                     function_def_t* fd = (function_def_t*)expr;
 
+                    if (m_scope.top() == "<global>") {
+                        m_vars_in_global_scope.push_back(fd->name);
+                    } else {
+                        auto global = std::find(
+                            std::begin(m_vars_in_global_scope),
+                            std::end(m_vars_in_global_scope),
+                            fd->name
+                        );
+
+                        if (global != std::end(m_vars_in_global_scope))
+                            WARNING(
+                                fmt("Defining clashing name \"%s\" on scope %s",
+                                    fd->name.c_str(),
+                                    get_scope(m_scope.top()).c_str()
+                                ),
+                                fd
+                            );
+
+                        m_vars_in_current_scope.push_back(fd->name);
+                    }
+
                     fd->name = m_scope.top() + "." + fd->name;
 
                     for (function_arg_t& arg : fd->args) {
+                        m_vars_in_current_scope.push_back(arg.name);
+
                         arg.name = fd->name + "." + arg.name;
                     }
 
@@ -77,7 +109,14 @@ namespace hs {
                             vd->name
                         );
 
-                        _log()
+                        if (global != std::end(m_vars_in_global_scope))
+                            WARNING(
+                                fmt("Defining clashing name \"%s\" on scope %s",
+                                    vd->name.c_str(),
+                                    get_scope(m_scope.top()).c_str()
+                                ),
+                                vd
+                            );
 
                         m_vars_in_current_scope.push_back(vd->name);
                     }
@@ -109,9 +148,12 @@ namespace hs {
                     bool found_in_global_scope = global != std::end(m_vars_in_global_scope);
 
                     if (found_in_current_scope && found_in_global_scope) {
-                        _log(warning, "Clashing name \"%s\" on scope %s",
-                            (*current).c_str(),
-                            get_scope(m_scope.top()).c_str()
+                        WARNING(
+                            fmt("Clashing name \"%s\" on scope %s",
+                                (*current).c_str(),
+                                get_scope(m_scope.top()).c_str()
+                            ),
+                            nr
                         );
 
                         break;
@@ -122,9 +164,12 @@ namespace hs {
                     if (found_in_global_scope) {
                         nr->name = "<global>." + nr->name;
                     } else {
-                        _log(warning, "Unknown name \"%s\" on scope %s",
-                            nr->name.c_str(),
-                            get_scope(m_scope.top()).c_str()
+                        WARNING(
+                            fmt("Using undefined name \"%s\" on scope %s",
+                                nr->name.c_str(),
+                                get_scope(m_scope.top()).c_str()
+                            ),
+                            nr
                         );
 
                         nr->name = "<unknown>." + nr->name;

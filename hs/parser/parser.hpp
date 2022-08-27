@@ -417,7 +417,7 @@ namespace hs {
             return &m_output;
         }
 
-        void parse() {
+        bool parse() {
             expression_t* lhs;
             expression_t* op;
 
@@ -444,15 +444,13 @@ namespace hs {
 
                     //_log(debug, "expression:\n%s", lhs->print(0).c_str());
                 } else {
-                    _log(error, "Compilation failed");
-
-                    return;
+                    return false;
                 }
 
                 m_current = m_input->get();
             }
 
-            _log(debug, "Compilation finished");
+            return true;
         }
     };
 }
