@@ -71,7 +71,14 @@ namespace hs {
                     if (m_scope.top() == "<global>") {
                         m_vars_in_global_scope.push_back(vd->name);
                     } else {
-                        _log(debug, "pushing a variable not in global scope %s", vd->name.c_str());
+                        auto global = std::find(
+                            std::begin(m_vars_in_global_scope),
+                            std::end(m_vars_in_global_scope),
+                            vd->name
+                        );
+
+                        _log()
+
                         m_vars_in_current_scope.push_back(vd->name);
                     }
 
@@ -80,14 +87,6 @@ namespace hs {
 
                 case EX_NAME_REF: {
                     name_ref_t* nr = (name_ref_t*)expr;
-
-                    for (std::string name : m_vars_in_current_scope) {
-                        _log(debug, "current scope var: %s", name.c_str());
-                    }
-                    
-                    for (std::string name : m_vars_in_global_scope) {
-                        _log(debug, "global scope var: %s", name.c_str());
-                    }
 
                     auto current = std::find(
                         std::begin(m_vars_in_current_scope),
@@ -98,8 +97,6 @@ namespace hs {
                     bool found_in_current_scope = current != std::end(m_vars_in_current_scope);
 
                     if (found_in_current_scope) {
-                        _log(debug, "var found in current scope");
-
                         nr->name = m_scope.top() + "." + nr->name;
                     }
 
@@ -111,18 +108,26 @@ namespace hs {
 
                     bool found_in_global_scope = global != std::end(m_vars_in_global_scope);
 
-                    if (found_in_global_scope) {
-                        _log(debug, "var found in global scope");
-
-                        nr->name = "<global>." + nr->name;
-                    }
-
-                    if (!(found_in_current_scope || found_in_global_scope)) {
-                        nr->name = "<unknown>." + nr->name;
-                    }
-
                     if (found_in_current_scope && found_in_global_scope) {
-                        _log(debug, "name clash, found in current and global scopes");
+                        _log(warning, "Clashing name \"%s\" on scope %s",
+                            (*current).c_str(),
+                            get_scope(m_scope.top()).c_str()
+                        );
+
+                        break;
+                    }
+
+                    if (found_in_current_scope) break;
+
+                    if (found_in_global_scope) {
+                        nr->name = "<global>." + nr->name;
+                    } else {
+                        _log(warning, "Unknown name \"%s\" on scope %s",
+                            nr->name.c_str(),
+                            get_scope(m_scope.top()).c_str()
+                        );
+
+                        nr->name = "<unknown>." + nr->name;
                     }
                 } break;
 

@@ -34,6 +34,8 @@ namespace hs {
 
     class expression_t {
     public:
+        int line, offset, len;
+
         virtual std::string print(int hierarchy) { return "<undefined>"; };
         virtual eval_t eval() { return eval_t(); };
         virtual expression_type_t get_type() { return EX_NONE; };

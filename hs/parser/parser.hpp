@@ -59,6 +59,10 @@ namespace hs {
 
             function_def_t* def = new function_def_t;
 
+            def->line = m_current.line;
+            def->offset = m_current.offset;
+            def->len = m_current.text.size();
+
             m_current = m_input->get();
 
             switch (m_current.type) {
@@ -200,6 +204,10 @@ namespace hs {
 
             numeric_literal_t* num = new numeric_literal_t;
 
+            num->line = m_current.line;
+            num->offset = m_current.offset;
+            num->len = m_current.text.size();
+
             if (!std::isdigit(m_current.text[0])) {
                 // This is a char literal
                 
@@ -220,6 +228,10 @@ namespace hs {
 
             invoke_expr_t* invoke = new invoke_expr_t;
 
+            invoke->line = m_current.line;
+            invoke->offset = m_current.offset;
+            invoke->len = m_current.text.size();
+
             m_current = m_input->get();
 
             invoke->ptr = parse_expression();
@@ -229,6 +241,10 @@ namespace hs {
 
         expression_t* parse_binary_operation(expression_t* lhs) {
             binary_op_t* bop = new binary_op_t;
+
+            bop->line = m_current.line;
+            bop->offset = m_current.offset;
+            bop->len = m_current.text.size();
 
             bop->bop = m_current.text[0];
 
@@ -243,6 +259,10 @@ namespace hs {
         expression_t* parse_variable_def(std::string type) {
             variable_def_t* var = new variable_def_t;
 
+            var->line = m_current.line;
+            var->offset = m_current.offset;
+            var->len = m_current.text.size();
+
             var->type = type;
             var->name = m_current.text;
 
@@ -253,6 +273,10 @@ namespace hs {
 
         expression_t* parse_name_ref(std::string name) {
             name_ref_t* ref = new name_ref_t;
+
+            ref->line = m_current.line;
+            ref->offset = m_current.offset;
+            ref->len = m_current.text.size();
             
             ref->name = name;
 
@@ -261,6 +285,10 @@ namespace hs {
 
         expression_t* parse_array_access(expression_t* lhs) {
             array_access_t* access = new array_access_t;
+
+            access->line = m_current.line;
+            access->offset = m_current.offset;
+            access->len = m_current.text.size();
 
             access->type_or_name = lhs;
 
@@ -279,6 +307,10 @@ namespace hs {
 
         expression_t* parse_function_call(expression_t* addr) {
             function_call_t* call = new function_call_t;
+
+            call->line = m_current.line;
+            call->offset = m_current.offset;
+            call->len = m_current.text.size();
 
             call->addr = addr;
 
@@ -304,6 +336,10 @@ namespace hs {
         expression_t* parse_assignment(expression_t* lhs) {
             assignment_t* assign = new assignment_t;
 
+            assign->line = m_current.line;
+            assign->offset = m_current.offset;
+            assign->len = m_current.text.size();
+
             assign->assignee = lhs;
             assign->op = m_current.text;
 
@@ -316,6 +352,10 @@ namespace hs {
 
         expression_t* parse_expression_block() {
             expression_block_t* block = new expression_block_t;
+
+            block->line = m_current.line;
+            block->offset = m_current.offset;
+            block->len = m_current.text.size();
 
             expression_t* lhs;
             expression_t* op;
@@ -436,6 +476,10 @@ hs::expression_t* hs::parser_t::parse_expression_impl() {
         case LT_OPENING_BRACKET: {
             type_t* none = new type_t;
 
+            none->line = m_current.line;
+            none->offset = m_current.offset;
+            none->len = m_current.text.size();
+
             none->type = "none";
 
             m_current = m_input->get();
@@ -454,6 +498,10 @@ hs::expression_t* hs::parser_t::parse_expression_impl() {
                 if (m_current.type == LT_IDENT) {
                     variable_def_t* var = new variable_def_t;
 
+                    var->line = m_current.line;
+                    var->offset = m_current.offset;
+                    var->len = m_current.text.size();
+
                     var->type = type;
                     var->name = m_current.text;
 
@@ -463,12 +511,20 @@ hs::expression_t* hs::parser_t::parse_expression_impl() {
                 } else {
                     type_t* type_expr = new type_t;
 
+                    type_expr->line = m_current.line;
+                    type_expr->offset = m_current.offset;
+                    type_expr->len = m_current.text.size();
+
                     type_expr->type = type;
 
                     expr = type_expr;
                 }
             } else {
                 name_ref_t* name = new name_ref_t;
+
+                name->line = m_current.line;
+                name->offset = m_current.offset;
+                name->len = m_current.text.size();
 
                 name->name = m_current.text;
 
