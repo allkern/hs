@@ -41,8 +41,6 @@ namespace hs {
         void init(stream_t <lexer_token_t>* input, error_logger_t* logger) {
             m_input = input;
             m_logger = logger;
-
-            //m_current = m_input->get();
         }
 
         bool is_type(std::string ident) {
@@ -61,17 +59,27 @@ namespace hs {
 
             m_current = m_input->get();
 
-            if (m_current.type == LT_ARROW) {
-                def->name = "<anonymous>";
+            switch (m_current.type) {
+                case LT_ARROW: {
+                    def->name = "<anonymous>";
 
-                goto parse_function_type;
-            }
+                    goto parse_function_type;
+                } break;
+                
+                case LT_COLON: {
+                    def->name = "<anonymous>";
+                    def->type = "<any>";
 
-            if (m_current.type == LT_COLON) {
-                def->name = "<anonymous>";
-                def->type = "<any>";
+                    goto parse_function_body;
+                } break;
 
-                goto parse_function_body;
+                case LT_OPENING_PARENT: {
+                    def->name = "<anonymous>";
+
+                    goto parse_function_args;
+                } break;
+
+                default: break;
             }
 
             if (m_current.type != LT_IDENT) {
@@ -86,10 +94,12 @@ namespace hs {
 
             switch (m_current.type) {
                 case LT_OPENING_PARENT: {
-                    // Parse parameters
+                    // Parse arguments
+                    parse_function_args:
+
                     function_arg_t arg;
 
-                    parse_function_arg:
+                    parse_arg:
 
                     m_current = m_input->get();
 
@@ -100,14 +110,6 @@ namespace hs {
                             ERROR("Expected " ESCAPE(37;1) "argument name" ESCAPE(0));
                         } break;
                     }
-                    
-                    // if (m_current.type != LT_IDENT) {
-                    //     if (m_logger) m_logger->print_error(
-                    //         "parser",
-                    //         "Expected " ESCAPE(37;1) "argument name" ESCAPE(0),
-                    //         m_current.line, m_current.offset, m_current.text.size()
-                    //     );
-                    // }
 
                     do_parse_arg:
 
@@ -137,7 +139,7 @@ namespace hs {
                         case LT_COMMA: {
                             def->args.push_back(arg);
 
-                            goto parse_function_arg;
+                            goto parse_arg;
                         } break;
 
                         case LT_CLOSING_PARENT: {
