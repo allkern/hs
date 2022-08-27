@@ -323,6 +323,26 @@ namespace hs {
                     return MATCH;
                 } break;
 
+                case '%': {
+                    switch (next) {
+                        case '=': {
+                            m_current_token.text = "%=";
+                            m_current_token.line = m_line;
+                            m_current_token.offset = m_offset;
+                            m_current_token.type = LT_OPERATOR_ASSIGN;
+
+                            CONSUME; CONSUME;
+                        } break;
+                        default: {
+                            SINGLE('%');
+
+                            m_current_token.type = LT_OPERATOR_BINARY;
+                        } break;
+                    }
+
+                    return MATCH;
+                } break;
+
                 case '=': {
                     switch (next) {
                         case '=': {
