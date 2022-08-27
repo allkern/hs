@@ -40,5 +40,9 @@ namespace hs {
 #endif
             return ss.str();
         }
+
+        expression_type_t type() override {
+            return EX_TYPE;
+        }
     };
 }

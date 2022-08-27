@@ -13,7 +13,7 @@ namespace hs {
         std::string name;
     };
 
-    struct function_definition_t : public expression_t {
+    struct function_def_t : public expression_t {
         std::string name;
         expression_t* body;
         std::string type;
@@ -42,6 +42,10 @@ namespace hs {
             ss << "(fn " << name << ": \n" << (body ? body->print(hierarchy + 1) : "<no_body>") << "\n" << std::string(hierarchy, ' ') << ')';
 #endif
             return ss.str();
+        }
+
+        expression_type_t type() override {
+            return EX_FUNCTION_DEF;
         }
     };
 }

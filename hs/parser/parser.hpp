@@ -7,6 +7,7 @@
 #include "../error.hpp"
 
 #include "expression.hpp"
+#include "output.hpp"
 
 #include "expressions/expression_block.hpp"
 #include "expressions/numeric_literal.hpp"
@@ -36,6 +37,7 @@ namespace hs {
         error_logger_t* m_logger;
 
         lexer_token_t m_current;
+        parser_output_t m_output;
     
     public:
         void init(stream_t <lexer_token_t>* input, error_logger_t* logger) {
@@ -55,7 +57,7 @@ namespace hs {
                 assert(false); // ??
             }
 
-            function_definition_t* def = new function_definition_t;
+            function_def_t* def = new function_def_t;
 
             m_current = m_input->get();
 
@@ -303,7 +305,7 @@ namespace hs {
             assignment_t* assign = new assignment_t;
 
             assign->assignee = lhs;
-            assign->type = m_current.text;
+            assign->op = m_current.text;
 
             m_current = m_input->get();
 
@@ -371,6 +373,10 @@ namespace hs {
             return nullptr;
         }
 
+        parser_output_t* get_output() {
+            return &m_output;
+        }
+
         void parse() {
             expression_t* lhs;
             expression_t* op;
@@ -394,6 +400,8 @@ namespace hs {
                 }
 
                 if (lhs) {
+                    m_output.source.push_back(lhs);
+
                     _log(debug, "expression:\n%s", lhs->print(0).c_str());
                 } else {
                     _log(error, "Compilation failed");

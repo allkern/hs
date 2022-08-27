@@ -8,7 +8,7 @@
 
 namespace hs {
     struct assignment_t : public expression_t {
-        std::string type;
+        std::string op;
         expression_t* assignee;
         expression_t* value;
 
@@ -18,11 +18,15 @@ namespace hs {
             ss << std::string(hierarchy, ' ');
 
 #ifndef HS_AST_PRINT_FORMAT_LISP
-            ss << "(assignment: type=\"" << type << "\", assignee=" << assignee->print(0) << ", value=" << value->print(0) << ")"; 
+            ss << "(assignment: op=\"" << op << "\", assignee=" << assignee->print(0) << ", value=" << value->print(0) << ")"; 
 #else
-            ss << "(" << type << " " << assignee->print(0) << " " << value->print(0) << ")"; 
+            ss << "(" << op << " " << assignee->print(0) << " " << value->print(0) << ")"; 
 #endif
             return ss.str();
+        }
+
+        expression_type_t type() override {
+            return EX_ASSIGNMENT;
         }
     };
 }

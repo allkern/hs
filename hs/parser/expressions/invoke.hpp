@@ -19,5 +19,9 @@ namespace hs {
 
             return ss.str();
         }
+
+        expression_type_t type() override {
+            return EX_INVOKE;
+        }
     };
 }
