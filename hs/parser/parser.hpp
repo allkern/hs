@@ -402,7 +402,7 @@ namespace hs {
                 if (lhs) {
                     m_output.source.push_back(lhs);
 
-                    _log(debug, "expression:\n%s", lhs->print(0).c_str());
+                    //_log(debug, "expression:\n%s", lhs->print(0).c_str());
                 } else {
                     _log(error, "Compilation failed");
 

@@ -24,7 +24,7 @@ namespace hs {
             return ss.str();
         }
 
-        expression_type_t type() override {
+        expression_type_t get_type() override {
             return EX_ARRAY_ACCESS;
         }
     };
