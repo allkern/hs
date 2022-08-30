@@ -244,3 +244,5 @@ namespace hs {
         }
     };
 }
+
+#undef WARNING

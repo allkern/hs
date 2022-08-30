@@ -2,5 +2,9 @@
 *.exe
 *.elf
 *.bin
+*.asm
+*.s
 main
 test.hs
+pci.hs
+iobus.hs

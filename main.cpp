@@ -7,6 +7,7 @@
 #include "hs/lexer/lexer.hpp"
 #include "hs/parser/parser.hpp"
 #include "hs/parser/context.hpp"
+#include "hs/preprocessor/preprocessor.hpp"
 
 int main(int argc, const char* argv[]) {
     _log::init("hs");
@@ -21,13 +22,20 @@ int main(int argc, const char* argv[]) {
 
     std::ifstream file(filename, std::ios::binary);
 
+    hs::preprocessor_t preprocessor;
+    hs::error_logger_t error_logger;
     hs::lexer_t lexer;
     hs::parser_t parser;
-    hs::error_logger_t error_logger;
     hs::contextualizer_t contextualizer;
 
-    error_logger.init(&file, filename);
-    lexer.init(&file, &error_logger);
+    preprocessor.init(&file, &error_logger);
+    preprocessor.preprocess();
+
+    std::stringstream* output = preprocessor.get_output();
+
+    error_logger.init(output, filename);
+
+    lexer.init(output, &error_logger);
     lexer.lex();
 
     parser.init(lexer.get_output(), &error_logger);

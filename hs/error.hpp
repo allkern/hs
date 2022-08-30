@@ -29,7 +29,7 @@ namespace hs {
         }
 
     public:
-        void init(std::ifstream* input, std::string filename = "") {
+        void init(std::istream* input, std::string filename = "") {
             while (!input->eof()) {
                 std::string line;
 
