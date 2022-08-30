@@ -270,8 +270,6 @@ namespace hs {
                         } break;
                     }
 
-                    consume_rest_of_line:
-
                     while ((!isnewline(m_current)) && (!iseof(m_current))) {
                         m_current = m_input->get();
                     }
