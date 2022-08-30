@@ -105,6 +105,14 @@ namespace hs {
 
             include.init(&file, m_logger);
             include.preprocess();
+
+            // Get defines from the processed file and accumulate
+            // them into our own defines
+            auto* map = include.get_define_map();
+
+            for (auto& p : *map) {
+                m_define_map.insert(p);
+            }
             
             auto file_output = include.get_output();
 
@@ -198,6 +206,10 @@ namespace hs {
         }
     
     public:
+        std::unordered_map <std::string, std::string>* get_define_map() {
+            return &m_define_map;
+        }
+
         void init(std::istream* input, error_logger_t* logger) {
             m_input = input;
             m_logger = logger;
