@@ -146,6 +146,31 @@ namespace hs {
             return rtrim(ltrim(s));
         }
 
+        bool parse_undef_directive() {
+            ignore_whitespace(false);
+
+            if (!(std::isalpha(m_current) || (m_current == '_')))
+                return false;
+
+            std::string name;
+
+            name.push_back(m_current);
+
+            m_current = m_input->get();
+
+            while (std::isalpha(m_current) || (m_current == '_') || std::isdigit(m_current)) {
+                name.push_back(m_current);
+
+                m_current = m_input->get();
+            }
+
+            if (m_define_map.contains(name)) {
+                m_define_map.erase(name);
+            }
+
+            return true;
+        }
+
         bool parse_define_directive() {
             ignore_whitespace(false);
 
@@ -238,6 +263,10 @@ namespace hs {
                         
                         case PD_DEFINE: {
                             if (!parse_define_directive()) break;
+                        } break;
+
+                        case PD_UNDEF: {
+                            if (!parse_undef_directive()) break;
                         } break;
                     }
 
