@@ -24,6 +24,8 @@ namespace hs {
             PD_MACRO
         };
 
+        std::unordered_map <std::string, std::string> m_define_map;
+
         std::unordered_map <std::string, directive_t> m_directive_map = {
             { "include", PD_INCLUDE },
             { "define" , PD_DEFINE  },
@@ -114,6 +116,61 @@ namespace hs {
 
                 c = file_output->get();
             }
+
+            return true;
+        }
+
+        const std::string WHITESPACE = " \n\r\t\f\v";
+
+        std::string ltrim(const std::string &s) {
+            size_t start = s.find_first_not_of(WHITESPACE);
+
+            return (start == std::string::npos) ? "" : s.substr(start);
+        }
+        
+        std::string rtrim(const std::string &s) {
+            size_t end = s.find_last_not_of(WHITESPACE);
+
+            return (end == std::string::npos) ? "" : s.substr(0, end + 1);
+        }
+        
+        std::string trim(const std::string &s) {
+            return rtrim(ltrim(s));
+        }
+
+        bool parse_define_directive() {
+            ignore_whitespace(false);
+
+            if (!(std::isalpha(m_current) || (m_current == '_')))
+                return false;
+
+            std::string name, value;
+
+            name.push_back(m_current);
+
+            m_current = m_input->get();
+
+            while (std::isalpha(m_current) || (m_current == '_') || std::isdigit(m_current)) {
+                name.push_back(m_current);
+
+                m_current = m_input->get();
+            }
+
+            ignore_whitespace(false);
+
+            while ((!isnewline(m_current)) && !m_input->eof()) {
+                value.push_back(m_current);
+
+                m_current = m_input->get();
+            }
+
+            value = trim(value);
+
+            m_define_map.insert({name, value});
+
+            _log(debug, "name=%s, value=%s", name.c_str(), value.c_str());
+
+            return true;
         }
 
         inline bool iseof(char c) {
@@ -166,6 +223,10 @@ namespace hs {
                         case PD_INCLUDE: {
                             if (!parse_include_directive()) break;
                         } break;
+                        
+                        case PD_DEFINE: {
+                            if (!parse_define_directive()) break;
+                        } break;
                     }
 
                     consume_rest_of_line:
@@ -194,6 +255,10 @@ namespace hs {
                     }
 
                     // if is preprocessor token then replace else
+
+                    if (m_define_map.contains(m_name)) {
+                        m_name = m_define_map[m_name];
+                    }
 
                     for (char c : m_name)
                         m_output.put(c);
