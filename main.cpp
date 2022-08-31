@@ -8,6 +8,7 @@
 #include "hs/parser/parser.hpp"
 #include "hs/parser/context.hpp"
 #include "hs/preprocessor/preprocessor.hpp"
+#include "hs/ir/generator.hpp"
 
 int main(int argc, const char* argv[]) {
     _log::init("hs");
@@ -27,6 +28,7 @@ int main(int argc, const char* argv[]) {
     hs::lexer_t lexer;
     hs::parser_t parser;
     hs::contextualizer_t contextualizer;
+    hs::ir_generator_t ir_generator;
 
     preprocessor.init(&file, &error_logger);
     preprocessor.preprocess();
@@ -52,6 +54,10 @@ int main(int argc, const char* argv[]) {
 
     contextualizer.init(&parser, &error_logger);
     contextualizer.contextualize();
+
+    ir_generator.init(&parser, &error_logger);
+
+    ir_generator.generate();
 
     return 0;
 }
