@@ -2,6 +2,7 @@
 
 #include "../parser/parser.hpp"
 #include "../error.hpp"
+#include "instruction.hpp"
 
 #include <vector>
 #include <string>
@@ -12,6 +13,14 @@ namespace hs {
         parser_output_t* m_po;
         error_logger_t* m_logger;
 
+        std::vector <ir_instruction_t> m_binary;
+
+        //std::unordered_map <std::string, int> m_global_map;
+        std::unordered_map <std::string, int> m_local_map;
+
+        int m_num_locals = 0, 
+            m_num_args = 0;
+
     public:
         void init(parser_t* parser, error_logger_t* logger) {
             m_po = parser->get_output();
@@ -19,32 +28,22 @@ namespace hs {
             m_logger = logger;
         }
 
-        uint32_t sp = 0x80000000;
-        uint32_t fp = sp;
-
-        int num_locals = 0, num_args = 0;
-
-        std::unordered_map <std::string, uint32_t> m_global_map;
-        std::unordered_map <std::string, int     > m_local_map;
-
-        int instructions = 0;
-
         uint32_t generate_impl(expression_t* expr, int base, bool pointer = false, bool inside_fn = false) {
             switch (expr->get_type()) {
                 case EX_FUNCTION_DEF: {
                     function_def_t* fd = (function_def_t*)expr;
 
-                    m_global_map.insert({fd->name, instructions});
+                    //m_global_map.insert({fd->name, instructions});
 
                     for (function_arg_t& arg : fd->args) {
-                        num_args++;
+                        m_num_args++;
 
-                        m_local_map.insert({arg.name, num_args * -4});
+                        m_local_map.insert({arg.name, m_num_args * -4});
                     }
 
-                    num_args++;
+                    m_num_args++;
 
-                    m_local_map.insert({"<return_address>", num_args * -4});
+                    m_local_map.insert({"<return_address>", m_num_args * -4});
 
                     _log(debug, "----------------------");
                     _log(debug, "Function assembly:");
@@ -54,25 +53,21 @@ namespace hs {
                     generate_impl(fd->body, base, false, true);
 
                     _log(debug, "MOV A0, R%u", base);
-                    instructions++;
 
-                    if (num_locals) {
-                        _log(debug, "ADD SP %u", num_locals * 4);
-                        instructions++;
+                    if (m_num_locals) {
+                        _log(debug, "ADD SP %u", m_num_locals * 4);
                     }
 
                     _log(debug, "RET");
-                    instructions++;
 
                     _log(debug, "----------------------");
 
-                    num_locals = 0;
-                    num_args = 0;
+                    m_num_locals = 0;
+                    m_num_args = 0;
 
                     m_local_map.clear();
 
-                    _log(debug, "MOV R%u, fn_%s_addr", base, fd->name.c_str());
-                    instructions++;
+                    _log(debug, "MOV R%u, %s", base, fd->name.c_str());
 
                     return 1;
                 } break;
@@ -98,17 +93,11 @@ namespace hs {
 
                     _log(debug, "DEC SP");
                     _log(debug, "MOV R%u, SP", base);
-                    instructions++;
-                    instructions++;
-
-                    sp -= 4;
 
                     if (inside_fn) {
-                        num_locals++;
+                        m_num_locals++;
 
-                        m_local_map.insert({vd->name, (num_locals + num_args) * -4});
-                    } else {
-                        m_global_map.insert({vd->name, sp});
+                        m_local_map.insert({vd->name, (m_num_locals + m_num_args) * -4});
                     }
 
                     return 1;
@@ -118,20 +107,18 @@ namespace hs {
                     function_call_t* fc = (function_call_t*)expr;
 
                     _log(debug, "MOV FP, SP");
-                    instructions++;
 
                     for (expression_t* exp : fc->args) {
                         generate_impl(exp, base, false, inside_fn);
 
                         _log(debug, "PUSH R%u", base);
-                        instructions++;
                     }
 
                     generate_impl(fc->addr, base, true, inside_fn);
 
-                    _log(debug, "CALL R%u", base); instructions++;
-                    _log(debug, "MOV R%u, A0", base); instructions++;
-                    _log(debug, "MOV SP, FP"); instructions++;
+                    _log(debug, "CALL R%u", base);
+                    _log(debug, "MOV R%u, A0", base);
+                    _log(debug, "MOV SP, FP");
 
                     return 1;
                 } break;
@@ -140,7 +127,6 @@ namespace hs {
                     numeric_literal_t* nl = (numeric_literal_t*)expr;
 
                     _log(debug, "MOV R%u, %u", base, nl->value);
-                    instructions++;
 
                     return 1;
                 } break;
@@ -148,20 +134,25 @@ namespace hs {
                 case EX_NAME_REF: {
                     name_ref_t* nr = (name_ref_t*)expr;
 
-                    bool global = m_global_map.contains(nr->name);
+                    bool local = m_local_map.contains(nr->name);
 
-                    if (global) {
-                        _log(debug, "MOV R%u, %s (%08x)", base, nr->name.c_str(), m_global_map[nr->name]);
-                        instructions++;
-                        
+                    if (local) {
                         if (!pointer) {
-                            _log(debug, "LOAD R%u R%u", base, base);
-                            instructions++;
+                            // If referring by value, then load the value from
+                            // stack
+                            _log(debug, "LOAD R%u, (%i)FP", base, m_local_map[nr->name]);
+                        } else {
+                            // Else, load the address in stack 
+                            _log(debug, "LEA R%u, (%i)FP", base, m_local_map[nr->name]);
                         }
                     } else {
+                        // If its a global variable, then load it's address
+                        _log(debug, "MOV R%u, %s", base, nr->name);
+
+                        // If referring by value, then load the value at that
+                        // address                        
                         if (!pointer) {
-                            _log(debug, "LOAD R%u, (%i)FP", base, m_local_map[nr->name]);
-                            instructions++;
+                            _log(debug, "LOAD R%u R%u", base, base);
                         }
                     }
 
@@ -175,7 +166,6 @@ namespace hs {
                     int rhs = generate_impl(bo->rhs, base + lhs, false, inside_fn);
 
                     _log(debug, "ALU R%u, R%u", base, base + lhs);
-                    instructions++;
 
                     return lhs + rhs;
                 } break;
@@ -187,8 +177,6 @@ namespace hs {
 
                     _log(debug, "LOAD R%u, R%u", base, base);
 
-                    instructions++;
-
                     return 1 + addr;
                 } break;
 
@@ -199,7 +187,6 @@ namespace hs {
                     int rhs = generate_impl(ae->value, base + lhs, false, inside_fn);
 
                     _log(debug, "STORE R%u R%u", base, base + lhs);
-                    instructions++;
 
                     return lhs + rhs;
                 } break;
