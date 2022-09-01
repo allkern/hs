@@ -22,7 +22,7 @@ namespace hs {
         uint32_t sp = 0x80000000;
         uint32_t fp = sp;
 
-        int num_locals = 0;
+        int num_locals = 0, num_args = 0;
 
         std::unordered_map <std::string, uint32_t> m_global_map;
         std::unordered_map <std::string, int     > m_local_map;
@@ -36,32 +36,35 @@ namespace hs {
 
                     m_global_map.insert({fd->name, instructions});
 
-                    int offset = -4;
-
                     for (function_arg_t& arg : fd->args) {
-                        m_local_map.insert({arg.name, offset});
+                        num_args++;
 
-                        num_locals++;
-                        offset -= 4;
+                        m_local_map.insert({arg.name, num_args * -4});
                     }
 
-                    m_local_map.insert({"<return_address>", offset - 4});
-                    num_locals++;
+                    num_args++;
 
+                    m_local_map.insert({"<return_address>", num_args * -4});
+
+                    _log(debug, "----------------------");
                     _log(debug, "Function assembly:");
 
                     _log(debug, "LABEL %s", fd->name.c_str());
 
-                    generate_impl(fd->body, base + 1, false, true);
+                    generate_impl(fd->body, base, false, true);
 
-                    _log(debug, "MOV A0, R%u", base + 1);
+                    _log(debug, "MOV A0, R%u", base);
+                    _log(debug, "ADD SP %u", num_locals * 4);
                     _log(debug, "RET");
                     instructions++;
                     instructions++;
 
-                    _log(debug, "End of function assembly");
+                    instructions++;
+
+                    _log(debug, "----------------------");
 
                     num_locals = 0;
+                    num_args = 0;
 
                     m_local_map.clear();
 
@@ -99,7 +102,8 @@ namespace hs {
 
                     if (inside_fn) {
                         num_locals++;
-                        m_local_map.insert({vd->name, num_locals * -4});
+
+                        m_local_map.insert({vd->name, (num_locals + num_args) * -4});
                     } else {
                         m_global_map.insert({vd->name, sp});
                     }
@@ -144,7 +148,7 @@ namespace hs {
                     bool global = m_global_map.contains(nr->name);
 
                     if (global) {
-                        _log(debug, "MOV R%u, %08x", base, m_global_map[nr->name]);
+                        _log(debug, "MOV R%u, %s (%08x)", base, nr->name.c_str(), m_global_map[nr->name]);
                         instructions++;
                         
                         if (!pointer) {
@@ -205,7 +209,7 @@ namespace hs {
 
         void generate() {
             for (expression_t* expr : m_po->source) {
-                _log(debug, "%s:", expr->print(0).c_str());
+                _log(debug, "\n%s:", expr->print(0).c_str());
                 generate_impl(expr, 0);
             }
         }

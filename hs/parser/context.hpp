@@ -239,7 +239,7 @@ namespace hs {
             for (expression_t* expr : m_po->source) {
                 contextualize_impl(expr);
 
-                _log(debug, "expression:\n%s", expr->print(0).c_str());
+                // _log(debug, "expression:\n%s", expr->print(0).c_str());
             }
         }
     };
