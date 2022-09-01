@@ -54,11 +54,14 @@ namespace hs {
                     generate_impl(fd->body, base, false, true);
 
                     _log(debug, "MOV A0, R%u", base);
-                    _log(debug, "ADD SP %u", num_locals * 4);
-                    _log(debug, "RET");
-                    instructions++;
                     instructions++;
 
+                    if (num_locals) {
+                        _log(debug, "ADD SP %u", num_locals * 4);
+                        instructions++;
+                    }
+
+                    _log(debug, "RET");
                     instructions++;
 
                     _log(debug, "----------------------");
