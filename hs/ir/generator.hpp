@@ -4,28 +4,54 @@
 #include "../error.hpp"
 #include "instruction.hpp"
 
+#include <stack>
 #include <vector>
 #include <string>
 #include <cstdint>
 
 namespace hs {
-    struct ir_generator_t {
+    class ir_generator_t {
         parser_output_t* m_po;
         error_logger_t* m_logger;
 
-        std::vector <ir_instruction_t> m_binary;
+        std::vector <ir_instruction_t> m_dummy;
 
-        //std::unordered_map <std::string, int> m_global_map;
+        std::vector <std::vector <ir_instruction_t>> m_functions;
+
+        int m_current = 0,
+            m_prev = m_current;
+
         std::unordered_map <std::string, int> m_local_map;
 
         int m_num_locals = 0, 
             m_num_args = 0;
+        
+        void begin_function() {
+            m_prev = m_current;
+            m_current = m_functions.size();
+
+            m_functions.push_back(m_dummy);
+        }
+
+        void append(ir_instruction_t ins) {
+            m_functions.at(m_current).push_back(ins);
+        }
+
+        void end_function() {
+            m_current = m_prev;
+        }
 
     public:
+        std::vector <std::vector <ir_instruction_t>>* get_functions() {
+            return &m_functions;
+        }
+
         void init(parser_t* parser, error_logger_t* logger) {
             m_po = parser->get_output();
 
             m_logger = logger;
+
+            m_functions.resize(1);
         }
 
         uint32_t generate_impl(expression_t* expr, int base, bool pointer = false, bool inside_fn = false) {
@@ -33,7 +59,7 @@ namespace hs {
                 case EX_FUNCTION_DEF: {
                     function_def_t* fd = (function_def_t*)expr;
 
-                    //m_global_map.insert({fd->name, instructions});
+                    begin_function();
 
                     for (function_arg_t& arg : fd->args) {
                         m_num_args++;
@@ -45,29 +71,26 @@ namespace hs {
 
                     m_local_map.insert({"<return_address>", m_num_args * -4});
 
-                    _log(debug, "----------------------");
-                    _log(debug, "Function assembly:");
-
-                    _log(debug, "LABEL %s", fd->name.c_str());
+                    append({IR_LABEL, fd->name});
 
                     generate_impl(fd->body, base, false, true);
 
-                    _log(debug, "MOV A0, R%u", base);
+                    append({IR_MOV, "A0", "R1"});
 
                     if (m_num_locals) {
-                        _log(debug, "ADD SP %u", m_num_locals * 4);
+                        append({IR_ADDSP, std::to_string(m_num_locals * 4)});
                     }
 
-                    _log(debug, "RET");
+                    append({IR_RET});
 
-                    _log(debug, "----------------------");
+                    end_function();
 
                     m_num_locals = 0;
                     m_num_args = 0;
 
                     m_local_map.clear();
 
-                    _log(debug, "MOV R%u, %s", base, fd->name.c_str());
+                    append({IR_MOV, "R" + std::to_string(base), fd->name});
 
                     return 1;
                 } break;
@@ -76,7 +99,7 @@ namespace hs {
                     expression_block_t* eb = (expression_block_t*)expr;
 
                     if (!eb->block.size()) {
-                        _log(debug, "NOP");
+                        append({IR_NOP});
 
                         return 0;
                     }
@@ -91,8 +114,8 @@ namespace hs {
                 case EX_VARIABLE_DEF: {
                     variable_def_t* vd = (variable_def_t*)expr;
 
-                    _log(debug, "DEC SP");
-                    _log(debug, "MOV R%u, SP", base);
+                    append({IR_DECSP});
+                    append({IR_MOV, "R" + std::to_string(base), "SP"});
 
                     if (inside_fn) {
                         m_num_locals++;
@@ -107,18 +130,19 @@ namespace hs {
                     function_call_t* fc = (function_call_t*)expr;
 
                     _log(debug, "MOV FP, SP");
+                    append({IR_MOV, "FP", "SP"});
 
                     for (expression_t* exp : fc->args) {
                         generate_impl(exp, base, false, inside_fn);
 
-                        _log(debug, "PUSH R%u", base);
+                        append({IR_PUSHR, "R" + std::to_string(base)});
                     }
 
                     generate_impl(fc->addr, base, true, inside_fn);
 
-                    _log(debug, "CALL R%u", base);
-                    _log(debug, "MOV R%u, A0", base);
-                    _log(debug, "MOV SP, FP");
+                    append({IR_CALLR, "R" + std::to_string(base)});
+                    append({IR_MOV, "R" + std::to_string(base), "A0"});
+                    append({IR_MOV, "SP", "FP"});
 
                     return 1;
                 } break;
@@ -126,7 +150,7 @@ namespace hs {
                 case EX_NUMERIC_LITERAL: {
                     numeric_literal_t* nl = (numeric_literal_t*)expr;
 
-                    _log(debug, "MOV R%u, %u", base, nl->value);
+                    append({IR_MOVI, "R" + std::to_string(base), std::to_string(nl->value)});
 
                     return 1;
                 } break;
@@ -140,19 +164,20 @@ namespace hs {
                         if (!pointer) {
                             // If referring by value, then load the value from
                             // stack
-                            _log(debug, "LOAD R%u, (%i)FP", base, m_local_map[nr->name]);
+
+                            append({IR_LOADF, "R" + std::to_string(base), std::to_string(m_local_map[nr->name])});
                         } else {
                             // Else, load the address in stack 
-                            _log(debug, "LEA R%u, (%i)FP", base, m_local_map[nr->name]);
+                            append({IR_LEAF, "R" + std::to_string(base), std::to_string(m_local_map[nr->name])});
                         }
                     } else {
                         // If its a global variable, then load it's address
-                        _log(debug, "MOV R%u, %s", base, nr->name);
+                        append({IR_MOVI, "R" + std::to_string(base), nr->name});
 
                         // If referring by value, then load the value at that
                         // address                        
                         if (!pointer) {
-                            _log(debug, "LOAD R%u R%u", base, base);
+                            append({IR_LOADR, "R" + std::to_string(base), "R" + std::to_string(base)});
                         }
                     }
 
@@ -165,7 +190,7 @@ namespace hs {
                     int lhs = generate_impl(bo->lhs, base, false, inside_fn);
                     int rhs = generate_impl(bo->rhs, base + lhs, false, inside_fn);
 
-                    _log(debug, "ALU R%u, R%u", base, base + lhs);
+                    append({IR_ALU, std::string(1, bo->bop), "R" + std::to_string(base), "R" + std::to_string(base + lhs)});
 
                     return lhs + rhs;
                 } break;
@@ -175,7 +200,7 @@ namespace hs {
 
                     int addr = generate_impl(aa->addr, base, false, inside_fn);
 
-                    _log(debug, "LOAD R%u, R%u", base, base);
+                    append({IR_LOADR, "R" + std::to_string(base), "R" + std::to_string(base)});
 
                     return 1 + addr;
                 } break;
@@ -186,7 +211,7 @@ namespace hs {
                     int lhs = generate_impl(ae->assignee, base, true, inside_fn);
                     int rhs = generate_impl(ae->value, base + lhs, false, inside_fn);
 
-                    _log(debug, "STORE R%u R%u", base, base + lhs);
+                    append({IR_STORE, "R" + std::to_string(base), "R" + std::to_string(base + lhs)});
 
                     return lhs + rhs;
                 } break;

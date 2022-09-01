@@ -9,6 +9,7 @@
 #include "hs/parser/context.hpp"
 #include "hs/preprocessor/preprocessor.hpp"
 #include "hs/ir/generator.hpp"
+#include "hs/ir/instruction.hpp"
 
 int main(int argc, const char* argv[]) {
     _log::init("hs");
@@ -58,6 +59,8 @@ int main(int argc, const char* argv[]) {
     ir_generator.init(&parser, &error_logger);
 
     ir_generator.generate();
+
+    std::vector <std::vector <hs::ir_instruction_t>>* functions = ir_generator.get_functions();
 
     return 0;
 }
