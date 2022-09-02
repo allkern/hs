@@ -201,8 +201,6 @@ namespace hs {
 
             m_define_map.insert({name, value});
 
-            _log(debug, "name=%s, value=%s", name.c_str(), value.c_str());
-
             return true;
         }
 

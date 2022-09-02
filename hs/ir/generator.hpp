@@ -199,9 +199,11 @@ namespace hs {
 
                     int addr = generate_impl(aa->addr, base, false, inside_fn);
 
-                    append({IR_LOADR, "R" + std::to_string(base), "R" + std::to_string(base)});
+                    if (!pointer) { 
+                        append({IR_LOADR, "R" + std::to_string(base), "R" + std::to_string(base)});
+                    }
 
-                    return 1 + addr;
+                    return addr;
                 } break;
 
                 case EX_ASSIGNMENT: {
