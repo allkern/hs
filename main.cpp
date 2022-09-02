@@ -10,6 +10,7 @@
 #include "hs/preprocessor/preprocessor.hpp"
 #include "hs/ir/generator.hpp"
 #include "hs/ir/instruction.hpp"
+#include "hs/ir/translators/hyrisc.hpp"
 
 int main(int argc, const char* argv[]) {
     _log::init("hs");
@@ -60,7 +61,11 @@ int main(int argc, const char* argv[]) {
 
     ir_generator.generate();
 
-    std::vector <std::vector <hs::ir_instruction_t>>* functions = ir_generator.get_functions();
+    hs::ir_tr_hyrisc_t translator;
+
+    translator.init(&ir_generator, &error_logger);
+
+    std::cout << translator.translate();
 
     return 0;
 }

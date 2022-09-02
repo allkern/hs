@@ -64,18 +64,18 @@ namespace hs {
                     for (function_arg_t& arg : fd->args) {
                         m_num_args++;
 
-                        m_local_map.insert({arg.name, m_num_args * -4});
+                        m_local_map.insert({arg.name, m_num_args * 4});
                     }
 
                     m_num_args++;
 
-                    m_local_map.insert({"<return_address>", m_num_args * -4});
+                    m_local_map.insert({"<return_address>", m_num_args * 4});
 
                     append({IR_LABEL, fd->name});
 
                     generate_impl(fd->body, base, false, true);
 
-                    append({IR_MOV, "A0", "R1"});
+                    append({IR_MOV, "A0", "R" + std::to_string(base)});
 
                     if (m_num_locals) {
                         append({IR_ADDSP, std::to_string(m_num_locals * 4)});
@@ -90,7 +90,7 @@ namespace hs {
 
                     m_local_map.clear();
 
-                    append({IR_MOV, "R" + std::to_string(base), fd->name});
+                    append({IR_MOVI, "R" + std::to_string(base), fd->name});
 
                     return 1;
                 } break;
@@ -120,7 +120,7 @@ namespace hs {
                     if (inside_fn) {
                         m_num_locals++;
 
-                        m_local_map.insert({vd->name, (m_num_locals + m_num_args) * -4});
+                        m_local_map.insert({vd->name, (m_num_locals + m_num_args) * 4});
                     }
 
                     return 1;
@@ -129,7 +129,6 @@ namespace hs {
                 case EX_FUNCTION_CALL: {
                     function_call_t* fc = (function_call_t*)expr;
 
-                    _log(debug, "MOV FP, SP");
                     append({IR_MOV, "FP", "SP"});
 
                     for (expression_t* exp : fc->args) {
@@ -223,10 +222,15 @@ namespace hs {
         }
 
         void generate() {
+            m_functions.at(0).push_back({IR_LABEL, "<ENTRY>"});
+
             for (expression_t* expr : m_po->source) {
-                _log(debug, "\n%s:", expr->print(0).c_str());
+                //_log(debug, "\n%s:", expr->print(0).c_str());
                 generate_impl(expr, 0);
             }
+
+            m_functions.at(0).push_back({IR_MOVI, "R0", "<global>.main"});
+            m_functions.at(0).push_back({IR_CALLR, "R0"});
         }
     };
 }
