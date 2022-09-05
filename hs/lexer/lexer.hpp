@@ -61,16 +61,24 @@ namespace hs {
                 return ERROR("Expected '{' after asm block declaration", 1);
             }
 
-            static int matching_braces = 0;
+            int matching_braces = 1;
 
             m_current_token.text.clear();
 
             CONSUME;
 
-            while ((m_current != '}') && !matching_braces) {
-                if (m_current == '\n') m_line++;
+            while (matching_braces) {
+                if (m_current == '\n') {
+                    m_offset = 0;
+                    m_line++;
+                }
+
                 if (m_current == '{') matching_braces++;
                 if (m_current == '}') matching_braces--;
+
+                if (m_current == '}' && !matching_braces) {
+                    break;
+                }
 
                 m_current_token.text.push_back(m_current);
 
