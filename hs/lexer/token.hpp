@@ -85,7 +85,8 @@ namespace hs {
         "LT_KEYWORD_ELSE",
         "LT_KEYWORD_WHILE",
         "LT_KEYWORD_DO",
-        "LT_KEYWORD_INVOKE"
+        "LT_KEYWORD_INVOKE",
+        "LT_ASM_BLOCK",
     };
 
     struct lexer_token_t {

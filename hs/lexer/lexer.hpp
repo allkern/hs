@@ -52,6 +52,36 @@ namespace hs {
 #define NO_MATCH { ST_NO_MATCH, "" };
 #define ERROR(msg, errl) { ST_ERROR, msg, m_line, m_offset, errl };
 
+        result_t lex_asm_block() {
+            m_current_token.type = LT_ASM_BLOCK;
+
+            ignore_whitespace();
+
+            if (m_current != '{') {
+                return ERROR("Expected '{' after asm block declaration", 1);
+            }
+
+            static int matching_braces = 0;
+
+            m_current_token.text.clear();
+
+            CONSUME;
+
+            while ((m_current != '}') && !matching_braces) {
+                if (m_current == '\n') m_line++;
+                if (m_current == '{') matching_braces++;
+                if (m_current == '}') matching_braces--;
+
+                m_current_token.text.push_back(m_current);
+
+                CONSUME;
+            }
+
+            CONSUME;
+
+            return MATCH;
+        }
+
         result_t try_lex_identifier() {
             if (!(std::isalpha(m_current) || m_current == '_')) return NO_MATCH;
 
@@ -66,6 +96,10 @@ namespace hs {
                 m_current_token.text.push_back(m_current);
 
                 CONSUME;
+            }
+
+            if (m_current_token.text == "asm") {
+                return lex_asm_block();
             }
 
             m_current_token.type = LT_IDENT;
