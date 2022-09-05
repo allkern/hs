@@ -123,7 +123,7 @@ namespace hs {
                         } break;
 
                         case IR_MOVI: {
-                            ss << "li " << map_register(i.args[0]) << ", " << fmt_label(i.args[1]);
+                            ss << ".load32 " << map_register(i.args[0]) << " " << fmt_label(i.args[1]);
                         } break;
 
                         case IR_NOP: {
