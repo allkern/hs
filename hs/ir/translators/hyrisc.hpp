@@ -140,6 +140,10 @@ namespace hs {
                             indented = false;
                         } break;
 
+                        case IR_PASSTHROUGH: {
+                            ss << i.args[0];
+                        } break;
+
                         case IR_STORE: {
                             ss << "store.l [" << map_register(i.args[0]) << "], " << map_register(i.args[1]);
                         } break;
