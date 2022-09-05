@@ -23,7 +23,8 @@ namespace hs {
         EX_NAME_REF,
         EX_NUMERIC_LITERAL,
         EX_TYPE,
-        EX_VARIABLE_DEF
+        EX_VARIABLE_DEF,
+        EX_ASM_BLOCK
     };
 
     class eval_t {

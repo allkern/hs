@@ -16,6 +16,7 @@
 #include "expressions/variable_def.hpp"
 #include "expressions/function_def.hpp"
 #include "expressions/assignment.hpp"
+#include "expressions/asm_block.hpp"
 #include "expressions/binary_op.hpp"
 #include "expressions/name_ref.hpp"
 #include "expressions/invoke.hpp"
@@ -350,6 +351,17 @@ namespace hs {
             return assign; 
         }
 
+        expression_t* parse_asm_block() {
+            asm_block_t* asm_block = new asm_block_t;
+
+            asm_block->line = m_current.line;
+            asm_block->offset = m_current.offset;
+            asm_block->len = m_current.text.size();
+            asm_block->assembly = m_current.text;
+
+            return asm_block;
+        }
+
         expression_t* parse_expression_block() {
             expression_block_t* block = new expression_block_t;
 
@@ -534,6 +546,10 @@ hs::expression_t* hs::parser_t::parse_expression_impl() {
 
         case LT_OPENING_BRACE: {
             expr = parse_expression_block();
+        } break;
+
+        case LT_ASM_BLOCK: {
+            expr = parse_asm_block();
         } break;
 
         case LT_SEMICOLON: {
