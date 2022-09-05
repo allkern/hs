@@ -111,6 +111,16 @@ namespace hs {
                     return 1;
                 } break;
 
+                case EX_ASM_BLOCK: {
+                    asm_block_t* ab = (asm_block_t*)expr;
+
+                    append({IR_PASSTHROUGH, ab->assembly});
+
+                    // Possible improvement, account for registers
+                    // used within asm block
+                    return 0;
+                } break;
+
                 case EX_VARIABLE_DEF: {
                     variable_def_t* vd = (variable_def_t*)expr;
 
