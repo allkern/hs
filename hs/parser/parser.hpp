@@ -359,6 +359,8 @@ namespace hs {
             asm_block->len = m_current.text.size();
             asm_block->assembly = m_current.text;
 
+            m_current = m_input->get();
+
             return asm_block;
         }
 
