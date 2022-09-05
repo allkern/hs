@@ -39,6 +39,17 @@ namespace hs {
 
         lexer_token_t m_current;
         parser_output_t m_output;
+
+        int m_anonymous_functions = 0;
+
+        std::string get_anonymous_function_name() {
+            std::string name = "<anonymous_";
+
+            name += std::to_string(m_anonymous_functions++);
+            name += ">";
+
+            return name;
+        }
     
     public:
         void init(stream_t <lexer_token_t>* input, error_logger_t* logger) {
@@ -68,20 +79,20 @@ namespace hs {
 
             switch (m_current.type) {
                 case LT_ARROW: {
-                    def->name = "<anonymous>";
+                    def->name = get_anonymous_function_name();
 
                     goto parse_function_type;
                 } break;
                 
                 case LT_COLON: {
-                    def->name = "<anonymous>";
+                    def->name = get_anonymous_function_name();
                     def->type = "<any>";
 
                     goto parse_function_body;
                 } break;
 
                 case LT_OPENING_PARENT: {
-                    def->name = "<anonymous>";
+                    def->name = get_anonymous_function_name();
 
                     goto parse_function_args;
                 } break;
