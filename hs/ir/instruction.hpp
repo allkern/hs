@@ -19,6 +19,7 @@ namespace hs {
         IR_RET,         // Return from subroutine
         IR_ALU,         // ALU instruction
         IR_FPU,         // FPU instruction
+        IR_DEFINE,      // Assembly define
         IR_PASSTHROUGH, // Passthrough, will emit its first argument verbatim
         IR_NOP          // NOP
     };
