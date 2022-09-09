@@ -45,19 +45,6 @@ encoding_t m_mode_encoding[14] = {
     ENC_4     // OP_NONE
 };
 
-struct instruction_t {
-    std::string mnemonic;
-    operand_mode_t mode;
-    char specifier;
-
-    // Data actually on opcode
-    uint8_t  encoding;
-    uint8_t  opcode;
-    uint16_t fieldx, fieldy, fieldz, fieldw;
-    uint8_t  imm8;
-    uint16_t imm16;
-} m_instruction;
-
 enum hyrisc_opcode_t {
     HY_MOV       = 0xff,
     HY_LI        = 0xfe,

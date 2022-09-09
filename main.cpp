@@ -11,6 +11,7 @@
 #include "hs/ir/generator.hpp"
 #include "hs/ir/instruction.hpp"
 #include "hs/ir/translators/hyrisc.hpp"
+#include "hs/assembler/hyrisc/assembler.hpp"
 
 int main(int argc, const char* argv[]) {
     _log::init("hs");
@@ -65,7 +66,23 @@ int main(int argc, const char* argv[]) {
 
     translator.init(&ir_generator, &error_logger);
 
-    std::cout << translator.translate();
+    std::string assembly = translator.translate();
+
+    std::cout << assembly;
+
+    hs::hyrisc_assembler_t as;
+
+    std::stringstream source(assembly);
+
+    hs::preprocessor_t assembly_pp;
+
+    assembly_pp.init(&source, &error_logger);
+
+    assembly_pp.preprocess();
+
+    as.init(assembly_pp.get_output(), &error_logger);
+
+    as.assemble();
 
     return 0;
 }
