@@ -15,7 +15,11 @@
 
 int main(int argc, const char* argv[]) {
     _log::init("hs");
-
+    
+    hs::hyrisc_assembler_t as;
+    hs::preprocessor_t assembly_pp;
+    hs::error_logger_t error_logger;
+    
     std::string filename;
 
     if (argv[1]) {
@@ -26,8 +30,28 @@ int main(int argc, const char* argv[]) {
 
     std::ifstream file(filename, std::ios::binary);
 
+    error_logger.init(&file, filename);
+
+    assembly_pp.init(&file, &error_logger);
+
+    assembly_pp.preprocess();
+
+    as.init(assembly_pp.get_output(), &error_logger);
+
+    as.assemble();
+
+    // std::string filename;
+
+    // if (argv[1]) {
+    //     filename = std::string(argv[1]);
+    // } else {
+    //     filename = "test.hs";
+    // }
+
+    // std::ifstream file(filename, std::ios::binary);
+
     hs::preprocessor_t preprocessor;
-    hs::error_logger_t error_logger;
+    // hs::error_logger_t error_logger;
     hs::lexer_t lexer;
     hs::parser_t parser;
     hs::contextualizer_t contextualizer;
@@ -70,19 +94,19 @@ int main(int argc, const char* argv[]) {
 
     std::cout << assembly;
 
-    hs::hyrisc_assembler_t as;
+    // hs::hyrisc_assembler_t as;
 
-    std::stringstream source(assembly);
+    // std::stringstream source(assembly);
 
-    hs::preprocessor_t assembly_pp;
+    // hs::preprocessor_t assembly_pp;
 
-    assembly_pp.init(&source, &error_logger);
+    // assembly_pp.init(&source, &error_logger);
 
-    assembly_pp.preprocess();
+    // assembly_pp.preprocess();
 
-    as.init(assembly_pp.get_output(), &error_logger);
+    // as.init(assembly_pp.get_output(), &error_logger);
 
-    as.assemble();
+    // as.assemble();
 
     return 0;
 }
