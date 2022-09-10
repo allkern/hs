@@ -168,6 +168,7 @@ namespace hs {
                 _log(debug, "mnemonic=%s, current=%c", name.c_str(), m_current);
 
                 parse_mnemonic(name);
+                parse_operands();
 
                 consume_until_eol();
             }
