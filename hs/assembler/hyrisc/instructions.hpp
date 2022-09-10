@@ -14,9 +14,7 @@ enum operand_mode_t : int {
     OP_RXFIXA,  // r0, [r1+i10] / [r0+i10], r1
     OP_RXFIXS,  // r0, [r1-i10] / [r0-i10], r1
     OP_I16,     // 0x0000
-    OP_CONDI,   // eq 0x0000
-    OP_CONDR,   // eq [r0+r1*i5]
-    OP_COND,    // eq
+    OP_INDEX,   // [r0+r1*i5]
     OP_RANGE,   // {r0-r1}
     OP_NONE     //
 };

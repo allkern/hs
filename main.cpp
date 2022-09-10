@@ -15,11 +15,7 @@
 
 int main(int argc, const char* argv[]) {
     _log::init("hs");
-    
-    hs::hyrisc_assembler_t as;
-    hs::preprocessor_t assembly_pp;
-    hs::error_logger_t error_logger;
-    
+
     std::string filename;
 
     if (argv[1]) {
@@ -30,28 +26,22 @@ int main(int argc, const char* argv[]) {
 
     std::ifstream file(filename, std::ios::binary);
 
-    error_logger.init(&file, filename);
+    hs::hyrisc_assembler_t as;
 
-    assembly_pp.init(&file, &error_logger);
+    hs::preprocessor_t assembly_pp;
+
+    assembly_pp.init(&file, nullptr);
 
     assembly_pp.preprocess();
 
-    as.init(assembly_pp.get_output(), &error_logger);
+    as.init(assembly_pp.get_output(), nullptr);
 
     as.assemble();
 
-    // std::string filename;
-
-    // if (argv[1]) {
-    //     filename = std::string(argv[1]);
-    // } else {
-    //     filename = "test.hs";
-    // }
-
-    // std::ifstream file(filename, std::ios::binary);
+    return 0;
 
     hs::preprocessor_t preprocessor;
-    // hs::error_logger_t error_logger;
+    hs::error_logger_t error_logger;
     hs::lexer_t lexer;
     hs::parser_t parser;
     hs::contextualizer_t contextualizer;

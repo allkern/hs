@@ -6,6 +6,13 @@
 
 #include "../../error.hpp"
 
+#define ERROR(msg) \
+    if (m_logger) m_logger->print_error( \
+        "assembler", \
+        msg, \
+        0, 0, 0, false, true \
+    );
+
 namespace hs {
     enum output_format_t {
         F_ELF32,
@@ -19,6 +26,8 @@ namespace hs {
         std::vector <uint8_t> m_output;
         std::unordered_map <std::string, uint32_t> m_symbol_map;
         std::unordered_map <std::string, uint32_t> m_local_map;
+
+        int m_pass = 0;
     
         uint32_t m_pos;
 
@@ -28,6 +37,7 @@ namespace hs {
             std::string mnemonic;
             operand_mode_t mode;
             char specifier;
+            bool shift = false;
 
             // Data actually on opcode
             uint8_t  encoding;
@@ -59,7 +69,7 @@ namespace hs {
                 m_instruction.mnemonic = mnemonic;
                 m_instruction.specifier = ' ';
             } else {
-                m_instruction.mnemonic = mnemonic.substr(dp);
+                m_instruction.mnemonic = mnemonic.substr(0, dp);
                 m_instruction.specifier = mnemonic.at(dp + 1);
             }
         }
@@ -86,20 +96,411 @@ namespace hs {
             return name;
         }
 
-        void parse_operands() {
+        uint32_t bin_stoul(const std::string& bin) {
+            uint32_t value = 0;
+
+            for (int i = 0; i < bin.size(); i++)
+                value |= (bin[i] == '1' ? 1 : 0) << i;
+            
+            return value;
+        }
+
+        uint32_t parse_integer() {
+            bool negative = false;
+
+            if (m_current == '-') {
+                negative = true;
+
+                m_current = m_input->get();
+            }
+
+            std::string integer;
+            uint32_t value;
+
+            // Parse numeric constant
+            if (std::isdigit(m_current)) {
+                integer.push_back(m_current);
+
+                m_current = m_input->get();
+
+                // Parse binary number
+                if (m_current == 'b') {
+                    m_current = m_input->get();
+
+                    integer.clear();
+
+                    while ((m_current == '1') || (m_current == '0')) {
+                        integer.push_back(m_current);
+
+                        m_current = m_input->get();
+                    }
+
+                    value = bin_stoul(integer);
+                    value = negative ? -value : value;
+                }
+
+                // Parse hex or dec
+                if ((m_current == 'x') || std::isdigit(m_current)) {
+                    integer.push_back(m_current);
+
+                    m_current = m_input->get();
+
+                    while (std::isxdigit(m_current) || std::isdigit(m_current)) {
+                        integer.push_back(m_current);
+
+                        m_current = m_input->get();
+                    }
+
+                    value = std::stoul(integer, nullptr, 0);
+                    value = negative ? -value : value;
+                }
+            }
+
+            // Parse char constant
+            if (m_current == '\'') {
+                m_current = m_input->get();
+
+                value = negative ? -(int)(m_current) : m_current;
+
+                // Consume char
+                m_current = m_input->get();
+
+                if (m_current != '\'') {
+                    ERROR("Expected closing \' after char constant");
+
+                    return 0;
+                }
+
+                // Consume closing '
+                m_current = m_input->get();
+            }
+
+            return value;
+        }
+
+        void parse_register_range() {
+            if (m_current != '{') {
+                // Error expected opening brace
+
+                return;
+            }
+
+            m_current = m_input->get();
+
+            std::string start = parse_name();
+
+            if (!m_register_map.contains(start)) {
+                // Error expected register
+
+                return;
+            }
+
+            m_instruction.fieldx = m_register_map[start];
+
+            ignore_whitespace();
+
+            switch (m_current) {
+                case ',': case '-': break;
+
+                default: {
+                    // Error expected , or -
+
+                    return;
+                } break;
+            }
+
+            m_current = m_input->get();
+
+            ignore_whitespace();
+
+            std::string end = parse_name();
+
+            if (!m_register_map.contains(end)) {
+                // Error expected register
+
+                return;
+            }
+
+            m_instruction.fieldy = m_register_map[end];
+
+            ignore_whitespace();
+
+            if (m_current != '}') {
+                // Error expected closing brace
+
+                return;
+            }
+
+            m_current = m_input->get();
+
+            return;
+        }
+
+        void parse_indexed_operand() {
+            bool add = false;
+            bool fixed = false;
+            bool shift = false;
+
+            if (m_current != '[') {
+                // Error expected opening bracket
+
+                return;
+            }
+
+            m_current = m_input->get();
+
+            std::string br = parse_name();
+
+            if (!m_register_map.contains(br)) {
+                // Error expected register
+                return;
+            }
+
+            m_instruction.fieldy = m_register_map[br];
+
+            ignore_whitespace();
+
+            switch (m_current) {
+                case '+': {
+                    add = true;
+                } break;
+                case '-': {
+                    add = false;
+                } break;
+                case ']': {
+                    add = true;
+
+                    // We're done
+
+                    m_current = m_input->get();
+
+                    return;
+                }
+                default: {
+                    // Error expected operator
+                    return;
+                } break;
+            }
+
+            m_current = m_input->get();
+
+            ignore_whitespace();
+
+            if (std::isalpha(m_current) || m_current == '_') {
+                // Indexed operand isn't fixed offset
+
+                if (!add) {
+                    // Error indexed register mode doesn't support subtracttion mode
+
+                    return;
+                }
+
+                std::string ir = parse_name();
+
+                if (!m_register_map.contains(ir)) {
+                    // Error expected register
+                    return;
+                }
+
+                m_instruction.fieldz = m_register_map[br];
+
+                ignore_whitespace();
+
+                switch (m_current) {
+                    case '*': { m_instruction.shift = false; } break;
+                    case ':': { m_instruction.shift = true; } break;
+                    case ']': {
+                        // We're done, set shift to false and shiftmul to 1
+                        m_instruction.shift = false;
+                        m_instruction.fieldw = 1;
+
+                        m_current = m_input->get();
+
+                        return;
+                    } break;
+                }
+
+                m_current = m_input->get();
+
+                ignore_whitespace();
+
+                if (!(std::isdigit(m_current) || m_current == '\'' || m_current == '-')) {
+                    // Error expected immediate
+
+                    return;
+                }
+
+                m_instruction.fieldw = parse_integer();
+
+                ignore_whitespace();
+
+                if (m_current != ']') {
+                    // Error expected closing bracket
+                    return;
+                }
+
+                m_current = m_input->get();
+
+                return;
+            } else if (std::isdigit(m_current) || m_current == '\'' || m_current == '-') {
+                // Indexed operand is fixed offset
+                m_instruction.mode = add ? OP_RXFIXA : OP_RXFIXS;
+
+                uint32_t offset = parse_integer();
+
+                m_instruction.fieldz = offset & 0x1f;
+                m_instruction.fieldw = (offset >> 5) & 0x1f;
+
+                ignore_whitespace();
+
+                if (m_current != ']') {
+                    // Error expected closing bracket
+
+                    return;
+                }
+
+                m_current = m_input->get();
+
+                return;
+            } else {
+                // Error expected register or immediate
+
+                return;
+            }
+        }
+
+        void parse_operand() {
             if (std::isalpha(m_current) || m_current == '_') {
                 std::string name = parse_name();
 
+                // Operand is a register
                 if (m_register_map.contains(name)) {
-                    _log(debug, "R%u", m_register_map[name]);
+                    int rn = m_register_map[name];
+
+                    switch (m_instruction.mode) {
+                        case OP_NONE: {
+                            m_instruction.fieldx = rn;
+                            m_instruction.mode = OP_RX;
+                        } break;
+
+                        case OP_RX: {
+                            m_instruction.fieldy = rn;
+                            m_instruction.mode = OP_RXRY;
+                        } break;
+                        
+                        case OP_RXRY: {
+                            m_instruction.fieldz = rn;
+                            m_instruction.mode = OP_RXRYRZ;
+                        } break;
+
+                        case OP_INDEX: {
+                            m_instruction.fieldx = rn;
+                            m_instruction.mode = OP_RXIND;
+                        } break;
+                    }
+                } else {
+                    uint32_t value = 0;
+                    bool found = false;
+
+                    // Operand is a name
+                    if (m_symbol_map.contains(name)) {
+                        value = m_symbol_map[name];
+                        found = true;
+                    }
+
+                    if (m_local_map.contains(name)) {
+                        value = m_local_map[name];
+                        found = true;
+                    }
+
+                    if ((!found) && (m_pass == 1)) {
+                        ERROR(fmt("Couldn't find symbol %s", name.c_str()));
+
+                        return;
+                    }
+
+                    switch (m_instruction.mode) {
+                        case OP_NONE: {
+                            m_instruction.imm16 = value;
+                            m_instruction.mode = OP_I16;
+                        } break;
+                        
+                        case OP_RX: {
+                            m_instruction.imm16 = value;
+                            m_instruction.mode = OP_RXI16;
+                        } break;
+
+                        case OP_RXRY: {
+                            m_instruction.imm8 = value;
+                            m_instruction.mode = OP_RXRYI8;
+                        } break;
+                    }
                 }
             }
+
+            // Operand is a numeric constant
+            if (std::isdigit(m_current) || m_current == '\'' || m_current == '-') {
+                uint32_t value = parse_integer();
+
+                switch (m_instruction.mode) {
+                    case OP_NONE: {
+                        m_instruction.imm16 = value;
+                        m_instruction.mode = OP_I16;
+                    } break;
+                    
+                    case OP_RX: {
+                        m_instruction.imm16 = value;
+                        m_instruction.mode = OP_RXI16;
+                    } break;
+
+                    case OP_RXRY: {
+                        m_instruction.imm8 = value;
+                        m_instruction.mode = OP_RXRYI8;
+                    } break;
+                }
+            }
+
+            if (m_current == '[') {
+                parse_indexed_operand();
+
+                switch (m_instruction.mode) {
+                    case OP_NONE: {
+                        m_instruction.mode = OP_INDEX;
+                    } break;
+
+                    case OP_RX: {
+                        m_instruction.mode = OP_RXIND;
+                    } break;
+                }
+            }
+
+            if (m_current == '{') {
+                parse_register_range();
+
+                switch (m_instruction.mode) {
+                    case OP_NONE: {
+                        m_instruction.mode = OP_RANGE;
+                    } break;
+                }
+            }
+        }
+
+        bool isoperand() {
+            return std::isalpha(m_current) ||
+                   (m_current == '_') ||
+                   std::isdigit(m_current) ||
+                   (m_current == '-') ||
+                   (m_current == '\'') ||
+                   (m_current == '[') ||
+                   (m_current == '{');
         }
     
     public:
         void init(std::istream* input, error_logger_t* logger) {
             m_input = input;
             m_logger = logger;
+
+            m_instruction.mode = OP_NONE;
 
             m_current = m_input->get();
         }
@@ -129,6 +530,21 @@ namespace hs {
         }
 
         void parse_line() {
+            if (m_input->eof()) return;
+
+            m_instruction.encoding  = 0;
+            m_instruction.fieldx    = 0;
+            m_instruction.fieldy    = 0;
+            m_instruction.fieldz    = 0;
+            m_instruction.fieldw    = 0;
+            m_instruction.imm16     = 0;
+            m_instruction.imm8      = 0;
+            m_instruction.mode      = OP_NONE;
+            m_instruction.opcode    = 0;
+            m_instruction.shift     = false;
+            m_instruction.specifier = 0;
+            m_instruction.mnemonic.clear();
+
             ignore_whitespace();
 
             if (m_current == '.') {
@@ -152,7 +568,9 @@ namespace hs {
 
             std::string name = parse_name();
 
-            ignore_whitespace();
+            while (isblank(m_current)) {
+                m_current = m_input->get();
+            }
 
             if (m_current == ':') {
                 m_local_map.clear();
@@ -164,13 +582,77 @@ namespace hs {
                 m_current = m_input->get();
 
                 parse_line();
-            } else if (std::isalpha(m_current)) {
-                _log(debug, "mnemonic=%s, current=%c", name.c_str(), m_current);
-
+            } else if (isoperand()) {
                 parse_mnemonic(name);
-                parse_operands();
 
-                consume_until_eol();
+                parse_operand();
+
+                while (isblank(m_current)) {
+                    m_current = m_input->get();
+                }
+
+                while (m_current == ',') {
+                    m_current = m_input->get();
+
+                    while (isblank(m_current)) {
+                        m_current = m_input->get();
+                    }
+
+                    parse_operand();
+
+                    while (isblank(m_current)) {
+                        m_current = m_input->get();
+                    }
+                }
+
+                static std::string mode_str[] = {
+                    "OP_RX",
+                    "OP_RXRY",
+                    "OP_RXI16",
+                    "OP_RXRYRZ",
+                    "OP_RXRYI8",
+                    "OP_RXIND",
+                    "OP_RXFIXA",
+                    "OP_RXFIXS",
+                    "OP_I16",
+                    "OP_INDEX",
+                    "OP_RANGE",
+                    "OP_NONE" 
+                };
+
+                _log(debug, "mnemonic=%s, specifier=%c, mode=%s",
+                    m_instruction.mnemonic.c_str(),
+                    m_instruction.specifier,
+                    mode_str[(int)m_instruction.mode].c_str()
+                );
+
+                return;
+            } else if (std::isspace(m_current)) {
+                parse_mnemonic(name);
+                ignore_whitespace();
+
+                static std::string mode_str[] = {
+                    "OP_RX",
+                    "OP_RXRY",
+                    "OP_RXI16",
+                    "OP_RXRYRZ",
+                    "OP_RXRYI8",
+                    "OP_RXIND",
+                    "OP_RXFIXA",
+                    "OP_RXFIXS",
+                    "OP_I16",
+                    "OP_INDEX",
+                    "OP_RANGE",
+                    "OP_NONE" 
+                };
+
+                _log(debug, "mnemonic=%s, specifier=%c, mode=%s",
+                    m_instruction.mnemonic.c_str(),
+                    m_instruction.specifier,
+                    mode_str[(int)m_instruction.mode].c_str()
+                );
+
+                return;
             }
         }
 
@@ -181,3 +663,5 @@ namespace hs {
         }
     };
 }
+
+#undef ERROR

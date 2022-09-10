@@ -82,22 +82,37 @@ namespace hs {
             );
         }
 
-        void print_error(std::string module, std::string err, int line, int col, int len, bool print_hint = true) {
+        void print_error(std::string module, std::string err, int line, int col, int len, bool print_hint = true, bool without_loc_info = false) {
             if (m_filename.size()) {
-                _log(error, "in " ESCAPE(37;1) "%s: " ESCAPE(0) "%s: %s (at " ESCAPE(37;1) "L%u" ESCAPE(0) ", " ESCAPE(37;1) "C%u" ESCAPE(0) ")",
-                    m_filename.c_str(),
-                    module.c_str(),
-                    err.c_str(),
-                    line + 1,
-                    col + 1
-                );
+                if (!without_loc_info) { 
+                    _log(error, "in " ESCAPE(37;1) "%s: " ESCAPE(0) "%s: %s (at " ESCAPE(37;1) "L%u" ESCAPE(0) ", " ESCAPE(37;1) "C%u" ESCAPE(0) ")",
+                        m_filename.c_str(),
+                        module.c_str(),
+                        err.c_str(),
+                        line + 1,
+                        col + 1
+                    );
+                } else {
+                    _log(error, "in " ESCAPE(37;1) "%s: " ESCAPE(0) "%s: %s",
+                        m_filename.c_str(),
+                        module.c_str(),
+                        err.c_str()
+                    );
+                }
             } else {
-                _log(error, "%s: %s (at %u;%u)",
-                    module.c_str(),
-                    err.c_str(),
-                    line + 1,
-                    col + 1
-                );
+                if (!without_loc_info) {
+                    _log(error, "%s: %s (at %u;%u)",
+                        module.c_str(),
+                        err.c_str(),
+                        line + 1,
+                        col + 1
+                    );
+                } else {
+                    _log(error, "in " ESCAPE(37;1) "%s: " ESCAPE(0) "%s: %s",
+                        module.c_str(),
+                        err.c_str()
+                    );
+                }
             }
 
             if (!print_hint) return;
