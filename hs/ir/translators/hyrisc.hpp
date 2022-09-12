@@ -32,16 +32,16 @@ namespace hs {
 
         static std::string map_binary_op(char bop) {
             switch (bop) {
-                case '+': return "add.s";
-                case '-': return "sub.s";
-                case '*': return "mul.s";
-                case '/': return "div.s";
+                case '+': return "add.u";
+                case '-': return "sub.u";
+                case '*': return "mul.u";
+                case '/': return "div.u";
                 case '&': return "and";
                 case '|': return "or";
                 case '^': return "xor";
             }
 
-            return "trap";
+            return "unimplemented_operator";
         }
 
         static std::string fmt_label(std::string label) {
