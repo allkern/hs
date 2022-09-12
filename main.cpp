@@ -26,19 +26,17 @@ int main(int argc, const char* argv[]) {
 
     std::ifstream file(filename, std::ios::binary);
 
-    hs::hyrisc_assembler_t as;
+    // hs::hyrisc_assembler_t as;
+    // hs::error_logger_t error_logger;
+    // hs::preprocessor_t assembly_pp;
 
-    hs::preprocessor_t assembly_pp;
+    // error_logger.init(&file, filename);
+    // assembly_pp.init(&file, nullptr);
+    // assembly_pp.preprocess();
+    // as.init(assembly_pp.get_output(), &error_logger);
+    // as.assemble();
 
-    assembly_pp.init(&file, nullptr);
-
-    assembly_pp.preprocess();
-
-    as.init(assembly_pp.get_output(), nullptr);
-
-    as.assemble();
-
-    return 0;
+    // return 0;
 
     hs::preprocessor_t preprocessor;
     hs::error_logger_t error_logger;
@@ -84,19 +82,21 @@ int main(int argc, const char* argv[]) {
 
     std::cout << assembly;
 
-    // hs::hyrisc_assembler_t as;
+    hs::hyrisc_assembler_t as;
 
-    // std::stringstream source(assembly);
+    std::stringstream source(assembly);
 
-    // hs::preprocessor_t assembly_pp;
+    hs::preprocessor_t assembly_pp;
 
-    // assembly_pp.init(&source, &error_logger);
+    assembly_pp.init(&source, &error_logger);
 
-    // assembly_pp.preprocess();
+    assembly_pp.preprocess();
 
-    // as.init(assembly_pp.get_output(), &error_logger);
+    std::ofstream binary("a.out", std::ios::binary);
 
-    // as.assemble();
+    as.init(assembly_pp.get_output(), &binary, &error_logger);
+
+    as.assemble();
 
     return 0;
 }

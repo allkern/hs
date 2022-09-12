@@ -5,6 +5,7 @@
 #include <string>
 
 #include "../../error.hpp"
+#include "instructions.hpp"
 
 #define ERROR(msg) \
     if (m_logger) m_logger->print_error( \
@@ -14,6 +15,20 @@
     );
 
 namespace hs {
+    static std::string hyrisc_mode_str[] = {
+        "OP_RX",
+        "OP_RXRY",
+        "OP_RXI16",
+        "OP_RXRYRZ",
+        "OP_RXRYI8",
+        "OP_RXIND",
+        "OP_RXFIXA",
+        "OP_RXFIXS",
+        "OP_I16",
+        "OP_INDEX",
+        "OP_RANGE",
+        "OP_NONE"
+    };
     enum output_format_t {
         F_ELF32,
         F_RAW
@@ -21,9 +36,9 @@ namespace hs {
 
     class hyrisc_assembler_t {
         std::istream* m_input;
+        std::ostream* m_output;
         char m_current;
         error_logger_t* m_logger;
-        std::vector <uint8_t> m_output;
         std::unordered_map <std::string, uint32_t> m_symbol_map;
         std::unordered_map <std::string, uint32_t> m_local_map;
 
@@ -31,13 +46,12 @@ namespace hs {
     
         uint32_t m_pos;
 
-#include "instructions.hpp"
-
         struct instruction_t {
             std::string mnemonic;
-            operand_mode_t mode;
+            hyrisc_operand_mode_t mode;
             char specifier;
             bool shift = false;
+            bool add = false;
 
             // Data actually on opcode
             uint8_t  encoding;
@@ -45,7 +59,1032 @@ namespace hs {
             uint16_t fieldx, fieldy, fieldz, fieldw;
             uint8_t  imm8;
             uint16_t imm16;
+            int      size;
         } m_instruction;
+
+        std::unordered_map <std::string, int> m_cond_map = {
+            { "eq", 0  },
+            { "ne", 1  },
+            { "cs", 2  },
+            { "cc", 3  },
+            { "mi", 4  },
+            { "pl", 5  },
+            { "vs", 6  },
+            { "vc", 7  },
+            { "hi", 8  },
+            { "ls", 9  },
+            { "ge", 10 },
+            { "lt", 11 },
+            { "gt", 12 },
+            { "le", 13 },
+        };
+
+        void parse_opcode() {
+            if (!hyrisc_mnemonic_id.contains(m_instruction.mnemonic)) {
+                ERROR(fmt("Mnemonic %s not found", m_instruction.mnemonic.c_str()));
+
+                return;
+
+                // Error mnemonic not found
+            }
+
+            hyrisc_mnemonic_t id = hyrisc_mnemonic_id[m_instruction.mnemonic];
+
+            switch (id) {
+                case IM_ADD: {
+                    if ((m_instruction.specifier == 'u') || (m_instruction.specifier == ' ')) {
+                        // add.u r0, r1
+                        if (m_instruction.mode == OP_RXRY) {
+                            m_instruction.opcode = HY_ADDR;
+                            m_instruction.fieldz = m_instruction.fieldy;
+                            m_instruction.fieldy = m_instruction.fieldx;
+
+                            return;
+                        }
+
+                        // add.u r0, r1, r2
+                        if (m_instruction.mode == OP_RXRYRZ) {
+                            m_instruction.opcode = HY_ADDR;
+
+                            return;
+                        }
+
+                        if (m_instruction.mode == OP_RXI16) {
+                            m_instruction.opcode = HY_ADDUI16;
+
+                            return;
+                        }
+
+                        if (m_instruction.mode == OP_RXRYI8) {
+                            m_instruction.opcode = HY_ADDUI8;
+
+                            return;
+                        }
+
+                        ERROR(fmt("Unsupported ADD.U mode %s", hyrisc_mode_str[m_instruction.mode].c_str()));
+
+                        return;
+                    }
+
+                    if (m_instruction.specifier == 's') {
+                        if (m_instruction.mode == OP_RXI16) {
+                            m_instruction.opcode = HY_ADDSI16;
+
+                            return;
+                        }
+
+                        if (m_instruction.mode == OP_RXRYI8) {
+                            m_instruction.opcode = HY_ADDSI8;
+
+                            return;
+                        }
+
+                        ERROR(fmt("Unsupported ADD.S mode %s", hyrisc_mode_str[m_instruction.mode].c_str()));
+
+                        return;
+                    }
+
+                    ERROR(fmt("Unknown specifier \'%c\' for ADD", m_instruction.specifier));
+                } break;
+
+                case IM_AND: {
+                    if (m_instruction.mode == OP_RXRY) {
+                        m_instruction.opcode = HY_ANDR;
+                        m_instruction.fieldz = m_instruction.fieldy;
+                        m_instruction.fieldy = m_instruction.fieldx;
+
+                        return;
+                    }
+
+                    if (m_instruction.mode == OP_RXRYRZ) {
+                        m_instruction.opcode = HY_ANDR;
+
+                        return;
+                    }
+
+                    if (m_instruction.mode == OP_RXI16) {
+                        m_instruction.opcode = HY_ANDI16;
+
+                        return;
+                    }
+
+                    if (m_instruction.mode == OP_RXRYI8) {
+                        m_instruction.opcode = HY_ANDI8;
+
+                        return;
+                    }
+
+                    ERROR(fmt("Unsupported AND mode %s", hyrisc_mode_str[m_instruction.mode].c_str()));
+
+                    return;
+                } break;
+
+                case IM_ASL: {
+                    if (m_instruction.mode == OP_RXRY) {
+                        m_instruction.opcode = HY_ASLR;
+                        m_instruction.fieldz = m_instruction.fieldy;
+                        m_instruction.fieldy = m_instruction.fieldx;
+
+                        return;
+                    }
+
+                    if (m_instruction.mode == OP_RXRYRZ) {
+                        m_instruction.opcode = HY_ASLR;
+
+                        return;
+                    }
+
+                    if (m_instruction.mode == OP_RXI16) {
+                        m_instruction.opcode = HY_ASLI16;
+
+                        return;
+                    }
+
+                    ERROR(fmt("Unsupported ASL mode %s", hyrisc_mode_str[m_instruction.mode].c_str()));
+
+                    return;
+                } break;
+
+                case IM_ASR: {
+                    if (m_instruction.mode == OP_RXRY) {
+                        m_instruction.opcode = HY_ASRR;
+                        m_instruction.fieldz = m_instruction.fieldy;
+                        m_instruction.fieldy = m_instruction.fieldx;
+
+                        return;
+                    }
+
+                    if (m_instruction.mode == OP_RXRYRZ) {
+                        m_instruction.opcode = HY_ASRR;
+
+                        return;
+                    }
+
+                    if (m_instruction.mode == OP_RXI16) {
+                        m_instruction.opcode = HY_ASRI16;
+
+                        return;
+                    }
+
+                    ERROR(fmt("Unsupported ASR mode %s", hyrisc_mode_str[m_instruction.mode].c_str()));
+
+                    return;
+                } break;
+
+                case IM_BAD: {
+                    m_instruction.opcode = 0x0;
+
+                    return;
+                } break;
+
+                case IM_BCC: {
+                    std::string cond = m_instruction.mnemonic.substr(m_instruction.mnemonic.size() - 2);
+                    std::string uc = m_instruction.mnemonic;
+
+                    for (char& c : uc) c = std::toupper(c);
+
+                    m_instruction.fieldx = m_cond_map[cond];
+
+                    if (m_instruction.specifier == 'u') {
+                        if (m_instruction.mode == OP_I16) {
+                            m_instruction.opcode = HY_BCCU;
+
+                            return;
+                        }
+
+                        ERROR(fmt("Unsupported %s.U mode %s", uc.c_str(), hyrisc_mode_str[m_instruction.mode].c_str()));
+                    }
+                    
+                    if (m_instruction.specifier == 's' || (m_instruction.specifier == ' ')) {
+                        if (m_instruction.mode == OP_I16) {
+                            m_instruction.opcode = HY_BCCS;
+
+                            return;
+                        }
+
+                        ERROR(fmt("Unsupported %s.S mode %s", uc.c_str(), hyrisc_mode_str[m_instruction.mode].c_str()));
+                    }
+
+                    ERROR(fmt("Unknown specifier \'%c\' for %s", m_instruction.specifier, uc.c_str()));
+
+                    return;
+                } break;
+
+                case IM_BRA: {
+                    m_instruction.fieldx = 14;
+
+                    if (m_instruction.specifier == 'u') {
+                        if (m_instruction.mode == OP_I16) {
+                            m_instruction.opcode = HY_BCCU;
+
+                            return;
+                        }
+
+                        ERROR(fmt("Unsupported BRA.U mode %s", hyrisc_mode_str[m_instruction.mode].c_str()));
+                    }
+                    
+                    if ((m_instruction.specifier == 's') || (m_instruction.specifier == ' ')) {
+                        if (m_instruction.mode == OP_I16) {
+                            m_instruction.opcode = HY_BCCS;
+
+                            return;
+                        }
+
+                        ERROR(fmt("Unsupported BRA.S mode %s", hyrisc_mode_str[m_instruction.mode].c_str()));
+                    }
+
+                    ERROR(fmt("Unknown specifier \'%c\' for BRA", m_instruction.specifier));
+
+                    return;
+                } break;
+                
+                case IM_CALL: {
+                    if (m_instruction.mode == OP_I16) {
+                        m_instruction.opcode = HY_CALLCCI16;
+                        m_instruction.fieldx = 14;
+
+                        return;
+                    }
+
+                    if (m_instruction.mode == OP_RX) {
+                        m_instruction.opcode = HY_CALLCCM;
+                        m_instruction.fieldy = m_instruction.fieldx;
+                        m_instruction.fieldx = 14;
+                        
+                        return;
+                    }
+
+                    if (m_instruction.mode == OP_INDEX) {
+                        m_instruction.opcode = m_instruction.shift ? HY_CALLCCS : HY_CALLCCM;
+                        m_instruction.fieldx = 14;
+
+                        return;
+                    }
+
+                    ERROR(fmt("Unsupported CALL mode %s", hyrisc_mode_str[m_instruction.mode].c_str()));
+                    
+                    return;
+                } break;
+
+                case IM_CALLCC: {
+                    std::string cond = m_instruction.mnemonic.substr(m_instruction.mnemonic.size() - 2);
+                    std::string uc = m_instruction.mnemonic;
+
+                    for (char& c : uc) c = std::toupper(c);
+
+                    if (m_instruction.mode == OP_I16) {
+                        m_instruction.opcode = HY_CALLCCI16;
+                        m_instruction.fieldx = m_cond_map[cond];
+
+                        return;
+                    }
+
+                    if (m_instruction.mode == OP_RX) {
+                        m_instruction.opcode = HY_CALLCCM;
+                        m_instruction.fieldy = m_instruction.fieldx;
+                        m_instruction.fieldx = m_cond_map[cond];
+                        
+                        return;
+                    }
+
+                    if (m_instruction.mode == OP_INDEX) {
+                        m_instruction.opcode = m_instruction.shift ? HY_CALLCCS : HY_CALLCCM;
+                        m_instruction.fieldx = m_cond_map[cond];
+
+                        return;
+                    }
+
+                    ERROR(fmt("Unsupported %u mode %s", uc.c_str(), hyrisc_mode_str[m_instruction.mode].c_str()));
+                    
+                    return;
+                } break;
+
+                case IM_CMP: {
+                    if (m_instruction.mode == OP_RXRY) {
+                        m_instruction.opcode = HY_CMPR;
+
+                        return;
+                    }
+
+                    if (m_instruction.mode == OP_RXI16) {
+                        m_instruction.opcode = HY_CMPI16;
+
+                        return;
+                    }
+
+                    ERROR(fmt("Unsupported CMP mode %s", hyrisc_mode_str[m_instruction.mode].c_str()));
+
+                    return;
+                } break;
+                
+                case IM_CMPZ: {
+                    if (m_instruction.mode == OP_RX) {
+                        m_instruction.opcode = HY_CMPZ;
+
+                        return;
+                    }
+
+                    ERROR(fmt("Unsupported CMPZ mode %s", hyrisc_mode_str[m_instruction.mode].c_str()));
+
+                    return;
+                } break;
+
+                case IM_DEBUG: {
+                    m_instruction.opcode = HY_DEBUG;
+
+                    return;
+                } break;
+
+                case IM_DEC: {
+                    m_instruction.opcode = HY_DEC;
+
+                    if (m_instruction.specifier == ' ') { m_instruction.size = 0; }
+                    else if (m_instruction.specifier == 'b') { m_instruction.size = 0; }
+                    else if (m_instruction.specifier == 's') { m_instruction.size = 1; }
+                    else if (m_instruction.specifier == 'l') { m_instruction.size = 2; }
+                    else if (m_instruction.specifier == 'd') { m_instruction.size = 3; }
+                    else {
+                        ERROR(fmt("Unknown specifier \'%c\' for DEC", m_instruction.specifier));
+
+                        return;
+                    }
+
+                    return;
+                } break;
+
+                case IM_DIV: {
+                    if ((m_instruction.specifier == 'u') || (m_instruction.specifier == ' ')) {
+                        // add.u r0, r1
+                        if (m_instruction.mode == OP_RXRY) {
+                            m_instruction.opcode = HY_DIVR;
+                            m_instruction.fieldz = m_instruction.fieldy;
+                            m_instruction.fieldy = m_instruction.fieldx;
+
+                            return;
+                        }
+
+                        // add.u r0, r1, r2
+                        if (m_instruction.mode == OP_RXRYRZ) {
+                            m_instruction.opcode = HY_DIVR;
+
+                            return;
+                        }
+
+                        if (m_instruction.mode == OP_RXI16) {
+                            m_instruction.opcode = HY_DIVUI16;
+
+                            return;
+                        }
+
+                        if (m_instruction.mode == OP_RXRYI8) {
+                            m_instruction.opcode = HY_DIVUI8;
+
+                            return;
+                        }
+
+                        ERROR(fmt("Unsupported DIV.U mode %s", hyrisc_mode_str[m_instruction.mode].c_str()));
+
+                        return;
+                    }
+
+                    if (m_instruction.specifier == 's') {
+                        if (m_instruction.mode == OP_RXI16) {
+                            m_instruction.opcode = HY_DIVSI16;
+
+                            return;
+                        }
+
+                        if (m_instruction.mode == OP_RXRYI8) {
+                            m_instruction.opcode = HY_DIVSI8;
+
+                            return;
+                        }
+
+                        ERROR(fmt("Unsupported DIV.S mode %s", hyrisc_mode_str[m_instruction.mode].c_str()));
+
+                        return;
+                    }
+
+                    ERROR(fmt("Unknown specifier \'%c\' for DIV", m_instruction.specifier));
+
+                    return;
+                } break;
+
+                case IM_INC: {
+                    m_instruction.opcode = HY_INC;
+
+                    if (m_instruction.specifier == ' ') { m_instruction.size = 0; }
+                    else if (m_instruction.specifier == 'b') { m_instruction.size = 0; }
+                    else if (m_instruction.specifier == 's') { m_instruction.size = 1; }
+                    else if (m_instruction.specifier == 'l') { m_instruction.size = 2; }
+                    else if (m_instruction.specifier == 'd') { m_instruction.size = 3; }
+                    else {
+                        ERROR(fmt("Unknown specifier \'%c\' for INC", m_instruction.specifier));
+
+                        return;
+                    }
+
+                    return;
+                } break;
+
+                case IM_JAL: {
+                    if (m_instruction.mode == OP_I16) {
+                        m_instruction.opcode = HY_JALCCI16;
+                        m_instruction.fieldx = 14;
+
+                        return;
+                    }
+
+                    if (m_instruction.mode == OP_RX) {
+                        m_instruction.opcode = HY_JALCCM;
+                        m_instruction.fieldy = m_instruction.fieldx;
+                        m_instruction.fieldx = 14;
+                        
+                        return;
+                    }
+
+                    if (m_instruction.mode == OP_INDEX) {
+                        m_instruction.opcode = m_instruction.shift ? HY_JALCCS : HY_JALCCM;
+                        m_instruction.fieldx = 14;
+
+                        return;
+                    }
+
+                    ERROR(fmt("Unsupported JAL mode %s", hyrisc_mode_str[m_instruction.mode].c_str()));
+                    
+                    return;
+                } break;
+
+                case IM_JALCC: {
+                    std::string cond = m_instruction.mnemonic.substr(m_instruction.mnemonic.size() - 2);
+                    std::string uc = m_instruction.mnemonic;
+
+                    for (char& c : uc) c = std::toupper(c);
+
+                    if (m_instruction.mode == OP_I16) {
+                        m_instruction.opcode = HY_JALCCI16;
+                        m_instruction.fieldx = m_cond_map[cond];
+
+                        return;
+                    }
+
+                    if (m_instruction.mode == OP_RX) {
+                        m_instruction.opcode = HY_JALCCM;
+                        m_instruction.fieldy = m_instruction.fieldx;
+                        m_instruction.fieldx = m_cond_map[cond];
+                        
+                        return;
+                    }
+
+                    if (m_instruction.mode == OP_INDEX) {
+                        m_instruction.opcode = m_instruction.shift ? HY_JALCCS : HY_JALCCM;
+                        m_instruction.fieldx = m_cond_map[cond];
+
+                        return;
+                    }
+
+                    ERROR(fmt("Unsupported %s mode %s", uc.c_str(), hyrisc_mode_str[m_instruction.mode].c_str()));
+                    
+                    return;
+                } break;
+
+                case IM_LEA: {
+                    if (m_instruction.mode == OP_RXIND) {
+                        m_instruction.opcode = m_instruction.shift ? HY_LEAS : HY_LEAM;
+
+                        return;
+                    }
+
+                    ERROR(fmt("Unsupported LEA mode %s", hyrisc_mode_str[m_instruction.mode].c_str()));
+                
+                    return;
+                } break;
+
+                case IM_LI: {
+                    if (m_instruction.mode == OP_RXI16) {
+                        m_instruction.opcode = HY_LI;
+
+                        return;
+                    }
+
+                    ERROR(fmt("Unsupported LI mode %s", hyrisc_mode_str[m_instruction.mode].c_str()));
+
+                    return;
+                } break;
+
+                case IM_LOAD: {
+                    if (m_instruction.specifier == ' ') { m_instruction.size = 2; }
+                    else if (m_instruction.specifier == 'b') { m_instruction.size = 0; }
+                    else if (m_instruction.specifier == 's') { m_instruction.size = 1; }
+                    else if (m_instruction.specifier == 'l') { m_instruction.size = 2; }
+                    else if (m_instruction.specifier == 'x') { m_instruction.size = 3; }
+                    else {
+                        ERROR(fmt("Unknown specifier \'%c\' for LOAD", m_instruction.specifier));
+
+                        return;
+                    }
+
+                    if (m_instruction.mode == OP_RXIND) {
+                        m_instruction.opcode = m_instruction.shift ? HY_LOADS : HY_LOADM;
+
+                        return;
+                    }
+
+                    if (m_instruction.mode == OP_RXFIX) {
+                        m_instruction.opcode = m_instruction.add ? HY_LOADFA : HY_LOADFS;
+
+                        return;
+                    }
+
+
+                    ERROR(fmt("Unsupported LOAD.%c mode %s", std::toupper(m_instruction.specifier), hyrisc_mode_str[m_instruction.mode].c_str()));
+
+                    return;
+                } break;
+
+                case IM_LSL: {
+                    if (m_instruction.mode == OP_RXRY) {
+                        m_instruction.opcode = HY_LSLR;
+                        m_instruction.fieldz = m_instruction.fieldy;
+                        m_instruction.fieldy = m_instruction.fieldx;
+
+                        return;
+                    }
+
+                    if (m_instruction.mode == OP_RXRYRZ) {
+                        m_instruction.opcode = HY_LSLR;
+
+                        return;
+                    }
+
+                    if (m_instruction.mode == OP_RXI16) {
+                        m_instruction.opcode = HY_LSLI16;
+
+                        return;
+                    }
+
+                    ERROR(fmt("Unsupported LSL mode %s", hyrisc_mode_str[m_instruction.mode].c_str()));
+
+                    return;
+                } break;
+
+                case IM_LSR: {
+                    if (m_instruction.mode == OP_RXRY) {
+                        m_instruction.opcode = HY_LSRR;
+                        m_instruction.fieldz = m_instruction.fieldy;
+                        m_instruction.fieldy = m_instruction.fieldx;
+
+                        return;
+                    }
+
+                    if (m_instruction.mode == OP_RXRYRZ) {
+                        m_instruction.opcode = HY_LSRR;
+
+                        return;
+                    }
+
+                    if (m_instruction.mode == OP_RXI16) {
+                        m_instruction.opcode = HY_LSRI16;
+
+                        return;
+                    }
+
+                    ERROR(fmt("Unsupported LSR mode %s", hyrisc_mode_str[m_instruction.mode].c_str()));
+
+                    return;
+                } break;
+
+                case IM_LUI: {
+                    if (m_instruction.mode == OP_RXI16) {
+                        m_instruction.opcode = HY_LUI;
+
+                        return;
+                    }
+
+                    ERROR(fmt("Unsupported LUI mode %s", hyrisc_mode_str[m_instruction.mode].c_str()));
+
+                    return;
+                } break;
+
+                case IM_MOV: {
+                    if (m_instruction.mode == OP_RXRY) {
+                        m_instruction.opcode = HY_MOV;
+
+                        return;
+                    }
+
+                    ERROR(fmt("Unsupported MOV mode %s", hyrisc_mode_str[m_instruction.mode].c_str()));
+
+                    return;
+                } break;
+
+                case IM_MUL: {
+                    if ((m_instruction.specifier == 'u') || (m_instruction.specifier == ' ')) {
+                        // add.u r0, r1
+                        if (m_instruction.mode == OP_RXRY) {
+                            m_instruction.opcode = HY_MULR;
+                            m_instruction.fieldz = m_instruction.fieldy;
+                            m_instruction.fieldy = m_instruction.fieldx;
+
+                            return;
+                        }
+
+                        // add.u r0, r1, r2
+                        if (m_instruction.mode == OP_RXRYRZ) {
+                            m_instruction.opcode = HY_MULR;
+
+                            return;
+                        }
+
+                        if (m_instruction.mode == OP_RXI16) {
+                            m_instruction.opcode = HY_MULUI16;
+
+                            return;
+                        }
+
+                        if (m_instruction.mode == OP_RXRYI8) {
+                            m_instruction.opcode = HY_MULUI8;
+
+                            return;
+                        }
+
+                        ERROR(fmt("Unsupported MUL.U mode %s", hyrisc_mode_str[m_instruction.mode].c_str()));
+
+                        return;
+                    }
+
+                    if (m_instruction.specifier == 's') {
+                        if (m_instruction.mode == OP_RXI16) {
+                            m_instruction.opcode = HY_MULSI16;
+
+                            return;
+                        }
+
+                        if (m_instruction.mode == OP_RXRYI8) {
+                            m_instruction.opcode = HY_MULSI8;
+
+                            return;
+                        }
+
+                        ERROR(fmt("Unsupported MUL.S mode %s", hyrisc_mode_str[m_instruction.mode].c_str()));
+
+                        return;
+                    }
+
+                    ERROR(fmt("Unknown specifier \'%c\' for MUL", m_instruction.specifier));
+
+                    return;
+                } break;
+
+                case IM_NEG: {
+                    if (m_instruction.mode == OP_RX) {
+                        m_instruction.fieldy = m_instruction.fieldx;
+                        m_instruction.opcode = HY_NEG;
+
+                        return;
+                    }
+
+                    if (m_instruction.mode == OP_RXRY) {
+                        m_instruction.opcode = HY_NEG;
+
+                        return;
+                    }
+
+                   ERROR(fmt("Unsupported NEG mode %s", hyrisc_mode_str[m_instruction.mode].c_str()));
+
+                    return;
+                } break;
+
+                case IM_NOP: {
+                    if (m_instruction.mode == OP_NONE) {
+                        m_instruction.opcode = HY_NOP;
+
+                        return;
+                    }
+
+                    ERROR(fmt("Unsupported NOP mode %s", hyrisc_mode_str[m_instruction.mode].c_str()));
+                    
+                    return;
+                } break;
+
+                case IM_NOT: {
+                    if (m_instruction.mode == OP_RX) {
+                        m_instruction.fieldy = m_instruction.fieldx;
+                        m_instruction.opcode = HY_NOT;
+
+                        return;
+                    }
+
+                    if (m_instruction.mode == OP_RXRY) {
+                        m_instruction.opcode = HY_NOT;
+
+                        return;
+                    }
+
+                    ERROR(fmt("Unsupported NOT mode %s", hyrisc_mode_str[m_instruction.mode].c_str()));
+
+                    return;
+                } break;
+
+                case IM_OR: {
+                    if (m_instruction.mode == OP_RXRY) {
+                        m_instruction.opcode = HY_ORR;
+                        m_instruction.fieldz = m_instruction.fieldy;
+                        m_instruction.fieldy = m_instruction.fieldx;
+
+                        return;
+                    }
+
+                    if (m_instruction.mode == OP_RXRYRZ) {
+                        m_instruction.opcode = HY_ORR;
+
+                        return;
+                    }
+
+                    if (m_instruction.mode == OP_RXI16) {
+                        m_instruction.opcode = HY_ORI16;
+
+                        return;
+                    }
+
+                    if (m_instruction.mode == OP_RXRYI8) {
+                        m_instruction.opcode = HY_ORI8;
+
+                        return;
+                    }
+
+                    ERROR(fmt("Unsupported OR mode %s", hyrisc_mode_str[m_instruction.mode].c_str()));
+
+                    return;
+                } break;
+
+                case IM_POP: {
+                    if (m_instruction.mode == OP_RX) {
+                        m_instruction.opcode = HY_POPS;
+
+                        return;
+                    };
+
+                    if (m_instruction.mode == OP_RANGE) {
+                        m_instruction.opcode = HY_POPM;
+
+                        return;
+                    }
+
+                    ERROR(fmt("Unsupported POP mode %s", hyrisc_mode_str[m_instruction.mode].c_str()));
+
+                    return;
+                } break;
+                
+                case IM_PUSH: {
+                    if (m_instruction.mode == OP_RX) {
+                        m_instruction.opcode = HY_PUSHS;
+
+                        return;
+                    };
+
+                    if (m_instruction.mode == OP_RANGE) {
+                        m_instruction.opcode = HY_PUSHM;
+
+                        return;
+                    }
+
+                    ERROR(fmt("Unsupported PUSH mode %s", hyrisc_mode_str[m_instruction.mode].c_str()));
+
+                    return;
+                } break;
+
+                case IM_RET: {
+                    if (m_instruction.mode == OP_NONE) {
+                        m_instruction.opcode = HY_RETCC;
+                        m_instruction.fieldx = 14;
+
+                        return;
+                    }
+
+                    ERROR(fmt("Unsupported RET mode %s", hyrisc_mode_str[m_instruction.mode].c_str()));
+
+                    return;
+                } break;
+
+                case IM_RETCC: {
+                    std::string cond = m_instruction.mnemonic.substr(m_instruction.mnemonic.size() - 2);
+                    std::string uc = m_instruction.mnemonic;
+
+                    for (char& c : uc) c = std::toupper(c);
+
+                    if (m_instruction.mode == OP_NONE) {
+                        m_instruction.opcode = HY_RETCC;
+                        m_instruction.fieldx = m_cond_map[cond];
+
+                        return;
+                    }
+
+                    ERROR(fmt("Unsupported %s mode %s", uc.c_str(), hyrisc_mode_str[m_instruction.mode].c_str()));
+
+                    return;
+                } break;
+
+                case IM_RST: {
+                    if (m_instruction.mode == OP_RX) {
+                        m_instruction.opcode = HY_RSTS;
+
+                        return;
+                    };
+
+                    if (m_instruction.mode == OP_RANGE) {
+                        m_instruction.opcode = HY_RSTM;
+
+                        return;
+                    }
+
+                    ERROR(fmt("Unsupported RST mode %s", hyrisc_mode_str[m_instruction.mode].c_str()));
+
+                    return;
+                } break;
+
+                case IM_RTL: {
+                    if (m_instruction.mode == OP_NONE) {
+                        m_instruction.opcode = HY_RTLCC;
+                        m_instruction.fieldx = 14;
+
+                        return;
+                    }
+
+                    ERROR(fmt("Unsupported RTL mode %s", hyrisc_mode_str[m_instruction.mode].c_str()));
+
+                    return;
+                } break;
+
+                case IM_RTLCC: {
+                    std::string cond = m_instruction.mnemonic.substr(m_instruction.mnemonic.size() - 2);
+                    std::string uc = m_instruction.mnemonic;
+
+                    for (char& c : uc) c = std::toupper(c);
+
+                    if (m_instruction.mode == OP_NONE) {
+                        m_instruction.opcode = HY_RTLCC;
+                        m_instruction.fieldx = m_cond_map[cond];
+
+                        return;
+                    }
+
+                    ERROR(fmt("Unsupported %s mode %s", uc.c_str(), hyrisc_mode_str[m_instruction.mode].c_str()));
+
+                    return;
+                } break;
+
+                case IM_SEXT: {
+                    if (m_instruction.mode == OP_RX) {
+                        m_instruction.fieldy = m_instruction.fieldx;
+                        m_instruction.opcode = HY_SEXT;
+
+                        return;
+                    }
+
+                    if (m_instruction.mode == OP_RXRY) {
+                        m_instruction.opcode = HY_SEXT;
+
+                        return;
+                    }
+
+                    ERROR(fmt("Unknown specifier \'%c\' for SEXT", m_instruction.specifier));
+
+                    return;
+                } break;
+
+                case IM_STORE: {
+                    if (m_instruction.specifier == ' ') { m_instruction.size = 2; }
+                    else if (m_instruction.specifier == 'b') { m_instruction.size = 0; }
+                    else if (m_instruction.specifier == 's') { m_instruction.size = 1; }
+                    else if (m_instruction.specifier == 'l') { m_instruction.size = 2; }
+                    else if (m_instruction.specifier == 'x') { m_instruction.size = 3; }
+                    else {
+                        ERROR(fmt("Unknown specifier \'%c\' for STORE", m_instruction.specifier));
+
+                        return;
+                    }
+
+                    if (m_instruction.mode == OP_RXIND) {
+                        m_instruction.opcode = m_instruction.shift ? HY_STORES : HY_STOREM;
+
+                        return;
+                    }
+
+                    if (m_instruction.mode == OP_RXFIX) {
+                        m_instruction.opcode = m_instruction.add ? HY_STOREFA : HY_STOREFS;
+
+                        return;
+                    }
+
+                    ERROR(fmt("Unsupported STORE.%c mode %s", std::toupper(m_instruction.specifier), hyrisc_mode_str[m_instruction.mode].c_str()));
+
+                    return;
+                } break;
+
+                case IM_SUB: {
+                    if ((m_instruction.specifier == 'u') || (m_instruction.specifier == ' ')) {
+                        // add.u r0, r1
+                        if (m_instruction.mode == OP_RXRY) {
+                            m_instruction.opcode = HY_SUBR;
+                            m_instruction.fieldz = m_instruction.fieldy;
+                            m_instruction.fieldy = m_instruction.fieldx;
+
+                            return;
+                        }
+
+                        // add.u r0, r1, r2
+                        if (m_instruction.mode == OP_RXRYRZ) {
+                            m_instruction.opcode = HY_SUBR;
+
+                            return;
+                        }
+
+                        if (m_instruction.mode == OP_RXI16) {
+                            m_instruction.opcode = HY_SUBUI16;
+
+                            return;
+                        }
+
+                        if (m_instruction.mode == OP_RXRYI8) {
+                            m_instruction.opcode = HY_SUBUI8;
+
+                            return;
+                        }
+
+                        ERROR(fmt("Unsupported SUB.U mode %s", hyrisc_mode_str[m_instruction.mode].c_str()));
+
+                        return;
+                    }
+
+                    if (m_instruction.specifier == 's') {
+                        if (m_instruction.mode == OP_RXI16) {
+                            m_instruction.opcode = HY_SUBSI16;
+
+                            return;
+                        }
+
+                        if (m_instruction.mode == OP_RXRYI8) {
+                            m_instruction.opcode = HY_SUBSI8;
+
+                            return;
+                        }
+
+                        ERROR(fmt("Unsupported SUB.S mode %s", hyrisc_mode_str[m_instruction.mode].c_str()));
+
+                        return;
+                    }
+
+                    ERROR(fmt("Unknown specifier \'%c\' for SUB", m_instruction.specifier));
+
+                    return;
+                } break;
+
+                case IM_TST: {
+                    if (m_instruction.mode == OP_RXI16) {
+                        m_instruction.opcode = HY_TST;
+
+                        return;
+                    }
+
+                    ERROR(fmt("Unsupported TST mode %s", hyrisc_mode_str[m_instruction.mode].c_str()));
+
+                    return;
+                } break;
+
+                case IM_XOR: {
+                    if (m_instruction.mode == OP_RXRY) {
+                        m_instruction.opcode = HY_XORR;
+                        m_instruction.fieldz = m_instruction.fieldy;
+                        m_instruction.fieldy = m_instruction.fieldx;
+
+                        return;
+                    }
+
+                    if (m_instruction.mode == OP_RXRYRZ) {
+                        m_instruction.opcode = HY_XORR;
+
+                        return;
+                    }
+
+                    if (m_instruction.mode == OP_RXI16) {
+                        m_instruction.opcode = HY_XORI16;
+
+                        return;
+                    }
+
+                    if (m_instruction.mode == OP_RXRYI8) {
+                        m_instruction.opcode = HY_XORI8;
+
+                        return;
+                    }
+
+                    ERROR(fmt("Unsupported XOR mode %s", hyrisc_mode_str[m_instruction.mode].c_str()));
+
+                    return;
+                } break;
+            }
+        }
 
         std::unordered_map <std::string, int> m_register_map = {
             { "r0" , 0  }, { "r1" , 1  }, { "r2" , 2  }, { "r3" , 3  },
@@ -136,11 +1175,10 @@ namespace hs {
                     }
 
                     value = bin_stoul(integer);
-                    value = negative ? -value : value;
-                }
 
-                // Parse hex or dec
-                if ((m_current == 'x') || std::isdigit(m_current)) {
+                    return negative ? -value : value;
+                } else if ((m_current == 'x') || std::isdigit(m_current)) {
+                    // Parse hex or dec
                     integer.push_back(m_current);
 
                     m_current = m_input->get();
@@ -152,7 +1190,12 @@ namespace hs {
                     }
 
                     value = std::stoul(integer, nullptr, 0);
-                    value = negative ? -value : value;
+
+                    return negative ? -value : value;
+                } else {
+                    value = std::stoul(integer, nullptr, 0);
+
+                    return negative ? -value : value;
                 }
             }
 
@@ -173,6 +1216,8 @@ namespace hs {
 
                 // Consume closing '
                 m_current = m_input->get();
+
+                return value;
             }
 
             return value;
@@ -262,13 +1307,15 @@ namespace hs {
 
             switch (m_current) {
                 case '+': {
-                    add = true;
+                    m_instruction.add = true;
                 } break;
+
                 case '-': {
-                    add = false;
+                    m_instruction.add = false;
                 } break;
+
                 case ']': {
-                    add = true;
+                    m_instruction.add = true;
 
                     // We're done
 
@@ -276,6 +1323,7 @@ namespace hs {
 
                     return;
                 }
+
                 default: {
                     // Error expected operator
                     return;
@@ -289,8 +1337,8 @@ namespace hs {
             if (std::isalpha(m_current) || m_current == '_') {
                 // Indexed operand isn't fixed offset
 
-                if (!add) {
-                    // Error indexed register mode doesn't support subtracttion mode
+                if (!m_instruction.add) {
+                    ERROR("Indexed register mode doesn't support subtraction");
 
                     return;
                 }
@@ -298,7 +1346,8 @@ namespace hs {
                 std::string ir = parse_name();
 
                 if (!m_register_map.contains(ir)) {
-                    // Error expected register
+                    ERROR(fmt("Expected register, got %s instead", ir.c_str()));
+
                     return;
                 }
 
@@ -325,7 +1374,7 @@ namespace hs {
                 ignore_whitespace();
 
                 if (!(std::isdigit(m_current) || m_current == '\'' || m_current == '-')) {
-                    // Error expected immediate
+                    ERROR("Expected immediate");
 
                     return;
                 }
@@ -335,7 +1384,8 @@ namespace hs {
                 ignore_whitespace();
 
                 if (m_current != ']') {
-                    // Error expected closing bracket
+                    ERROR(fmt("Expected closing bracket, got %c instead", m_current));
+
                     return;
                 }
 
@@ -344,7 +1394,7 @@ namespace hs {
                 return;
             } else if (std::isdigit(m_current) || m_current == '\'' || m_current == '-') {
                 // Indexed operand is fixed offset
-                m_instruction.mode = add ? OP_RXFIXA : OP_RXFIXS;
+                m_instruction.mode = OP_RXFIX;
 
                 uint32_t offset = parse_integer();
 
@@ -496,8 +1546,9 @@ namespace hs {
         }
     
     public:
-        void init(std::istream* input, error_logger_t* logger) {
+        void init(std::istream* input, std::ostream* output, error_logger_t* logger) {
             m_input = input;
+            m_output = output;
             m_logger = logger;
 
             m_instruction.mode = OP_NONE;
@@ -511,15 +1562,30 @@ namespace hs {
             }
         }
 
-        // uint32_t encode_instruction() {
-        //     encoding_t encoding = m_mode_encoding[m_instruction.mode];
+        uint32_t encode_instruction() {
+            m_instruction.encoding = hyrisc_mode_encoding[m_instruction.mode];
 
-        //     switch (encoding) {
-        //         case ENC_4: {
+            uint32_t opcode   = (m_instruction.opcode & 0xff);
+            uint32_t encoding = (m_instruction.encoding & 0x3) << 8;
+            uint32_t fieldx   = (m_instruction.fieldx & 0x1f) << 10;
+            uint32_t fieldy   = (m_instruction.fieldy & 0x1f) << 15;
+            uint32_t fieldz   = (m_instruction.fieldz & 0x1f) << 20;
+            uint32_t fieldw   = (m_instruction.fieldw & 0x1f) << 25;
+            uint32_t size     = (m_instruction.size & 0x3) << 30;
+            uint32_t imm8     = (m_instruction.imm8 & 0xff) << 20;
+            uint32_t imm16    = (m_instruction.imm16 & 0xffff) << 15;
 
-        //         }
-        //     }
-        // }
+            uint32_t encoded = 0;
+
+            switch (encoding) {
+                case ENC_4: { encoded = opcode | encoding | fieldx | fieldy | fieldz | fieldw | size; } break;
+                case ENC_3: { encoded = opcode | encoding | fieldx | fieldy | imm8; }
+                case ENC_2: { encoded = opcode | encoding | fieldx | imm16; } break;
+                case ENC_1: { ERROR("Encoding 0 (1) is unsupported"); } break;
+            }
+
+            return encoded;
+        }
 
         void consume_until_eol() {
             while (m_current != '\n') {
@@ -544,6 +1610,8 @@ namespace hs {
             m_instruction.shift     = false;
             m_instruction.specifier = 0;
             m_instruction.mnemonic.clear();
+
+            uint32_t encoded = 0;
 
             ignore_whitespace();
 
@@ -576,7 +1644,7 @@ namespace hs {
                 m_local_map.clear();
                 m_symbol_map.insert({name, m_pos});
 
-                _log(debug, "label=%s", name.c_str());
+                //_log(debug, "label=%s", name.c_str());
 
                 // Consume :
                 m_current = m_input->get();
@@ -584,7 +1652,6 @@ namespace hs {
                 parse_line();
             } else if (isoperand()) {
                 parse_mnemonic(name);
-
                 parse_operand();
 
                 while (isblank(m_current)) {
@@ -605,52 +1672,36 @@ namespace hs {
                     }
                 }
 
-                static std::string mode_str[] = {
-                    "OP_RX",
-                    "OP_RXRY",
-                    "OP_RXI16",
-                    "OP_RXRYRZ",
-                    "OP_RXRYI8",
-                    "OP_RXIND",
-                    "OP_RXFIXA",
-                    "OP_RXFIXS",
-                    "OP_I16",
-                    "OP_INDEX",
-                    "OP_RANGE",
-                    "OP_NONE" 
-                };
+                parse_opcode();
 
-                _log(debug, "mnemonic=%s, specifier=%c, mode=%s",
-                    m_instruction.mnemonic.c_str(),
-                    m_instruction.specifier,
-                    mode_str[(int)m_instruction.mode].c_str()
-                );
+                // _log(debug, "mnemonic=%s, specifier=%c, mode=%s",
+                //     m_instruction.mnemonic.c_str(),
+                //     m_instruction.specifier,
+                //     hyrisc_mode_str[(int)m_instruction.mode].c_str()
+                // );
+
+                encoded = encode_instruction();
+
+                m_output->write((char*)&encoded, sizeof(uint32_t));
+
+                //_log(debug, "opcode=%08x", encode_instruction());
 
                 return;
-            } else if (std::isspace(m_current)) {
+            } else if (std::isspace(m_current) || (m_current == -1)) {
                 parse_mnemonic(name);
                 ignore_whitespace();
 
-                static std::string mode_str[] = {
-                    "OP_RX",
-                    "OP_RXRY",
-                    "OP_RXI16",
-                    "OP_RXRYRZ",
-                    "OP_RXRYI8",
-                    "OP_RXIND",
-                    "OP_RXFIXA",
-                    "OP_RXFIXS",
-                    "OP_I16",
-                    "OP_INDEX",
-                    "OP_RANGE",
-                    "OP_NONE" 
-                };
+                parse_opcode();
+                // _log(debug, "mnemonic=%s, specifier=%c, mode=%s",
+                //     m_instruction.mnemonic.c_str(),
+                //     m_instruction.specifier,
+                //     hyrisc_mode_str[(int)m_instruction.mode].c_str()
+                // );
 
-                _log(debug, "mnemonic=%s, specifier=%c, mode=%s",
-                    m_instruction.mnemonic.c_str(),
-                    m_instruction.specifier,
-                    mode_str[(int)m_instruction.mode].c_str()
-                );
+                encoded = encode_instruction();
+
+                m_output->write((char*)&encoded, sizeof(uint32_t));
+                //_log(debug, "opcode=%08x", encode_instruction());
 
                 return;
             }

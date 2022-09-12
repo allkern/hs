@@ -1,4 +1,5 @@
 .vscode/
+binutils/
 *.exe
 *.elf
 *.bin
@@ -8,3 +9,5 @@ main
 test.hs
 pci.hs
 iobus.hs
+a.out
+disas.c
