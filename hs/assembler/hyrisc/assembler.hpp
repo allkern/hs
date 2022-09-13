@@ -1544,14 +1544,11 @@ namespace hs {
                    (m_current == '[') ||
                    (m_current == '{');
         }
-    
-    public:
-        void init(std::istream* input, std::ostream* output, error_logger_t* logger) {
-            m_input = input;
-            m_output = output;
-            m_logger = logger;
 
-            m_instruction.mode = OP_NONE;
+        void consume_until_eol() {
+            while (m_current != '\n') {
+                m_current = m_input->get();
+            }
 
             m_current = m_input->get();
         }
@@ -1585,14 +1582,6 @@ namespace hs {
             }
 
             return encoded;
-        }
-
-        void consume_until_eol() {
-            while (m_current != '\n') {
-                m_current = m_input->get();
-            }
-
-            m_current = m_input->get();
         }
 
         void parse_line() {
@@ -1689,6 +1678,7 @@ namespace hs {
                 return;
             } else if (std::isspace(m_current) || (m_current == -1)) {
                 parse_mnemonic(name);
+
                 ignore_whitespace();
 
                 parse_opcode();
@@ -1705,6 +1695,17 @@ namespace hs {
 
                 return;
             }
+        }
+    
+    public:
+        void init(std::istream* input, std::ostream* output, error_logger_t* logger) {
+            m_input = input;
+            m_output = output;
+            m_logger = logger;
+
+            m_instruction.mode = OP_NONE;
+
+            m_current = m_input->get();
         }
 
         void assemble() {
