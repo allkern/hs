@@ -44,7 +44,7 @@ namespace hs {
 
         int m_pass = 0;
     
-        uint32_t m_pos;
+        uint32_t m_pos = 0;
 
         struct instruction_t {
             std::string mnemonic;
@@ -54,12 +54,12 @@ namespace hs {
             bool add = false;
 
             // Data actually on opcode
-            uint8_t  encoding;
-            uint8_t  opcode;
-            uint16_t fieldx, fieldy, fieldz, fieldw;
-            uint8_t  imm8;
-            uint16_t imm16;
-            int      size;
+            uint32_t encoding;
+            uint32_t opcode;
+            uint32_t fieldx, fieldy, fieldz, fieldw;
+            uint32_t imm8;
+            uint32_t imm16;
+            uint32_t size;
         } m_instruction;
 
         std::unordered_map <std::string, int> m_cond_map = {
@@ -1572,16 +1572,198 @@ namespace hs {
             uint32_t imm8     = (m_instruction.imm8 & 0xff) << 20;
             uint32_t imm16    = (m_instruction.imm16 & 0xffff) << 15;
 
+            // _log(debug, "opcode=%02x, encoding=%u, fieldx=%04x, fieldy=%04x, fieldz=%04x, fieldw=%04x, size=%04x, imm8=%02x, imm16=%04x",
+            //     m_instruction.opcode,
+            //     m_instruction.encoding,
+            //     m_instruction.fieldx,
+            //     m_instruction.fieldy,
+            //     m_instruction.fieldz,
+            //     m_instruction.fieldw,
+            //     m_instruction.size,
+            //     m_instruction.imm8,
+            //     m_instruction.imm16
+            // );
+
             uint32_t encoded = 0;
 
-            switch (encoding) {
+            switch (m_instruction.encoding) {
                 case ENC_4: { encoded = opcode | encoding | fieldx | fieldy | fieldz | fieldw | size; } break;
-                case ENC_3: { encoded = opcode | encoding | fieldx | fieldy | imm8; }
+                case ENC_3: { encoded = opcode | encoding | fieldx | fieldy | imm8; } break;
                 case ENC_2: { encoded = opcode | encoding | fieldx | imm16; } break;
                 case ENC_1: { ERROR("Encoding 0 (1) is unsupported"); } break;
             }
 
             return encoded;
+        }
+
+        void write_instruction(uint32_t insn) {
+            uint32_t opcode = insn;
+
+            m_output->write((char*)&opcode, sizeof(uint32_t));
+        }
+
+        enum directive_t {
+            AD_LOAD32,
+            AD_ELF_TEXT
+        };
+
+        std::unordered_map <std::string, directive_t> m_directive_map = {
+            { "load32", AD_LOAD32 },
+            { "text", AD_ELF_TEXT }
+        };
+
+        void handle_load32() {
+            std::string reg = parse_name();
+
+            if (!m_register_map.contains(reg)) {
+                ERROR(fmt("Expected register, got %s", reg.c_str()));
+
+                return;
+            }
+
+            ignore_whitespace();
+
+            uint32_t value;
+
+            if (std::isdigit(m_current) || m_current == '-' || m_current == '\'') {
+                switch (m_pass) {
+                    case 0: {
+                        value = parse_integer();
+
+                        m_pos += (value & 0xffff0000) ? 8 : 4;
+                    } break;
+
+                    case 1: {
+                        uint32_t opcode = 0;
+
+                        value = parse_integer();
+
+                        if (!value) {
+                            m_instruction.opcode = HY_RSTS;
+                            m_instruction.mode   = OP_RX;
+                            m_instruction.fieldx = m_register_map[reg];
+
+                            opcode = encode_instruction();
+
+                            write_instruction(encode_instruction());
+
+                            m_pos += 4;
+                        } else if (value & 0xffff0000) {
+                            m_instruction.opcode = HY_LUI;
+                            m_instruction.mode   = OP_RXI16;
+                            m_instruction.fieldx = m_register_map[reg];
+                            m_instruction.imm16  = (value >> 16) & 0xffff;
+
+                            write_instruction(encode_instruction());
+
+                            m_instruction.opcode = HY_ORI16;
+                            m_instruction.mode   = OP_RXI16;
+                            m_instruction.fieldx = m_register_map[reg];
+                            m_instruction.imm16  = value & 0xffff;
+
+                            write_instruction(encode_instruction());
+
+                            m_pos += 8;
+                        } else {
+                            m_instruction.opcode = HY_LI;
+                            m_instruction.mode   = OP_RXI16;
+                            m_instruction.fieldx = m_register_map[reg];
+                            m_instruction.imm16  = value & 0xffff;
+
+                            write_instruction(encode_instruction());
+
+                            m_pos += 4;
+                        }
+                        
+                    } break;
+                }
+            } else {
+                // This is a name we have to look up
+                switch (m_pass) {
+                    case 0: {
+                        m_pos += 8;
+                    } break;
+
+                    case 1: {
+                        std::string symbol = parse_name();
+
+                        if (m_local_map.contains(symbol)) {
+                            value = m_local_map[symbol];
+
+                            goto found;
+                        }
+
+                        if (m_symbol_map.contains(symbol)) {
+                            value = m_symbol_map[symbol];
+
+                            goto found;
+                        }
+
+                        ERROR(fmt("Symbol \"%s\" not found", symbol.c_str()));
+
+                        return;
+
+                        found:
+
+                        uint32_t opcode = 0;
+
+                        m_instruction.opcode = HY_LUI;
+                        m_instruction.mode   = OP_RXI16;
+                        m_instruction.fieldx = m_register_map[reg];
+                        m_instruction.imm16  = (value >> 16) & 0xffff;
+
+                        opcode = encode_instruction();
+
+                        m_output->write((char*)&opcode, sizeof(opcode));
+                        
+                        m_instruction.opcode = HY_ORI16;
+                        m_instruction.mode   = OP_RXI16;
+                        m_instruction.fieldx = m_register_map[reg];
+                        m_instruction.imm16  = value & 0xffff;
+
+                        opcode = encode_instruction();
+
+                        m_output->write((char*)&opcode, sizeof(opcode));
+
+                        m_pos += 8;
+                    } break;
+                }
+            }
+        }
+
+        void handle_directives() {
+            // Consume .
+            m_current = m_input->get();
+
+            std::string str = parse_name();
+
+            if (!m_directive_map.contains(str)) {
+                ignore_whitespace();
+
+                if (m_current != ':') {
+                    ERROR("Expected : after local label definition");
+
+                    return;
+                }
+
+                m_local_map.insert({str, m_pos});
+
+                m_current = m_input->get();
+
+                return;
+            }
+
+            directive_t directive = m_directive_map[str];
+
+            ignore_whitespace();
+
+            switch (directive) {
+                case AD_LOAD32: { handle_load32(); } break;
+            }
+
+            consume_until_eol();
+
+            return;
         }
 
         void parse_line() {
@@ -1600,25 +1782,10 @@ namespace hs {
             m_instruction.specifier = 0;
             m_instruction.mnemonic.clear();
 
-            uint32_t encoded = 0;
-
             ignore_whitespace();
 
             if (m_current == '.') {
-                // Assembler directive
-                m_current = m_input->get();
-
-                std::string directive = parse_name();
-
-                _log(debug, "directive=%s", directive.c_str());
-
-                consume_until_eol();
-
-                return;
-
-                ignore_whitespace();
-
-                m_local_map.insert({directive, m_pos});
+                handle_directives();
 
                 return;
             }
@@ -1631,14 +1798,15 @@ namespace hs {
 
             if (m_current == ':') {
                 m_local_map.clear();
-                m_symbol_map.insert({name, m_pos});
 
-                //_log(debug, "label=%s", name.c_str());
+                m_symbol_map.insert({name, m_pos});
 
                 // Consume :
                 m_current = m_input->get();
 
                 parse_line();
+
+                return;
             } else if (isoperand()) {
                 parse_mnemonic(name);
                 parse_operand();
@@ -1663,17 +1831,17 @@ namespace hs {
 
                 parse_opcode();
 
-                // _log(debug, "mnemonic=%s, specifier=%c, mode=%s",
-                //     m_instruction.mnemonic.c_str(),
-                //     m_instruction.specifier,
-                //     hyrisc_mode_str[(int)m_instruction.mode].c_str()
-                // );
+                switch (m_pass) {
+                    case 0: {
+                        m_pos += 4;
+                    } break;
 
-                encoded = encode_instruction();
+                    case 1: {
+                        write_instruction(encode_instruction());
 
-                m_output->write((char*)&encoded, sizeof(uint32_t));
-
-                //_log(debug, "opcode=%08x", encode_instruction());
+                        m_pos += 4;
+                    } break;
+                }
 
                 return;
             } else if (std::isspace(m_current) || (m_current == -1)) {
@@ -1682,16 +1850,18 @@ namespace hs {
                 ignore_whitespace();
 
                 parse_opcode();
-                // _log(debug, "mnemonic=%s, specifier=%c, mode=%s",
-                //     m_instruction.mnemonic.c_str(),
-                //     m_instruction.specifier,
-                //     hyrisc_mode_str[(int)m_instruction.mode].c_str()
-                // );
 
-                encoded = encode_instruction();
+                switch (m_pass) {
+                    case 0: {
+                        m_pos += 4;
+                    } break;
 
-                m_output->write((char*)&encoded, sizeof(uint32_t));
-                //_log(debug, "opcode=%08x", encode_instruction());
+                    case 1: {
+                        write_instruction(encode_instruction());
+
+                        m_pos += 4;
+                    } break;
+                }
 
                 return;
             }
@@ -1703,12 +1873,24 @@ namespace hs {
             m_output = output;
             m_logger = logger;
 
-            m_instruction.mode = OP_NONE;
-
             m_current = m_input->get();
         }
 
         void assemble() {
+            m_pass = 0;
+
+            while (!m_input->eof()) {
+                parse_line();
+            }
+
+            m_input->clear();
+            m_input->seekg(0);
+            
+            m_current = m_input->get();
+
+            m_pos = 0;
+            m_pass = 1;
+
             while (!m_input->eof()) {
                 parse_line();
             }
