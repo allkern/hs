@@ -240,9 +240,17 @@ namespace hs {
                 //_log(debug, "\n%s:", expr->print(0).c_str());
                 generate_impl(expr, 0);
             }
-
+            
+            // Function call semantics
+            append({IR_MOV, "FP", "SP"});
             m_functions.at(0).push_back({IR_MOVI, "R0", "<global>.main"});
             m_functions.at(0).push_back({IR_CALLR, "R0"});
+            append({IR_MOV, "R0", "A0"});
+            append({IR_MOV, "SP", "FP"});
+
+            // This will only work with Hyrisc for now.
+            // just ignore and remove whenever needed
+            m_functions.at(0).push_back({IR_PASSTHROUGH, "debug"});
         }
     };
 }
