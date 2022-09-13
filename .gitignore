@@ -1,5 +1,6 @@
 .vscode/
 binutils/
+bin/
 *.exe
 *.elf
 *.bin

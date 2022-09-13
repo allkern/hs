@@ -80,8 +80,6 @@ int main(int argc, const char* argv[]) {
 
     std::string assembly = translator.translate();
 
-    std::cout << assembly;
-
     hs::hyrisc_assembler_t as;
 
     std::stringstream source(assembly);
