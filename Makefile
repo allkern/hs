@@ -1,5 +1,3 @@
-.PHONY: examples
-
 bin/hs main.cpp:
 	mkdir -p bin
 
