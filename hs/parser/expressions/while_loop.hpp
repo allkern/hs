@@ -7,8 +7,9 @@
 #include <sstream>
 
 namespace hs {
-    struct array_access_t : public expression_t {
+    struct while_loop_t : public expression_t {
         expression_t* condition;
+        expression_t* body;
 
         std::string print(int hierarchy) override {
             std::ostringstream ss;

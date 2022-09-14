@@ -16,6 +16,7 @@
 #include "expressions/variable_def.hpp"
 #include "expressions/function_def.hpp"
 #include "expressions/assignment.hpp"
+#include "expressions/while_loop.hpp"
 #include "expressions/asm_block.hpp"
 #include "expressions/binary_op.hpp"
 #include "expressions/name_ref.hpp"
@@ -295,6 +296,44 @@ namespace hs {
             return ref;
         }
 
+        expression_t* parse_while_loop() {
+            if (m_current.type != LT_KEYWORD_WHILE) {
+                assert(false); // ??
+            }
+
+            while_loop_t* whl = new while_loop_t;
+
+            whl->line = m_current.line;
+            whl->offset = m_current.offset;
+            whl->len = m_current.text.size();
+
+            m_current = m_input->get();
+
+            if (m_current.type != LT_OPENING_PARENT) {
+                ERROR("Expected opening parenthesis after while loop declaration");
+            }
+
+            m_current = m_input->get();
+
+            whl->condition = parse_expression();
+
+            if (m_current.type != LT_CLOSING_PARENT) {
+                ERROR("Expected closing parenthesis after while loop condition");
+            }
+
+            m_current = m_input->get();
+
+            if (m_current.type != LT_COLON) {
+                ERROR("Expected colon after closing parenthesis");
+            }
+
+            m_current = m_input->get();
+
+            whl->body = parse_expression();
+
+            return whl;
+        }
+
         expression_t* parse_array_access(expression_t* lhs) {
             array_access_t* access = new array_access_t;
 
@@ -486,6 +525,10 @@ hs::expression_t* hs::parser_t::parse_expression_impl() {
     switch (m_current.type) {
         case LT_KEYWORD_FN: {
             expr = parse_function_definition();
+        } break;
+
+        case LT_KEYWORD_WHILE: {
+            expr = parse_while_loop();
         } break;
 
         case LT_LITERAL_NUMERIC: {
