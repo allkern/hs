@@ -64,13 +64,14 @@ namespace hs {
 
                     int m_this_loop = m_loops++;
 
-                    append({IR_LABEL, ".L" + std::to_string(m_this_loop)});
+                    // To-do: clean this up
+                    append({IR_LABEL, "!L" + std::to_string(m_this_loop)});
 
                     generate_impl(wl->body, base, false, inside_fn);
 
                     generate_impl(wl->condition, base, false, inside_fn);
 
-                    append({IR_BRANCH, "NE", ".L" + std::to_string(m_this_loop)});
+                    append({IR_BRANCH, "NE", "L" + std::to_string(m_this_loop)});
                 } break;
 
                 case EX_FUNCTION_DEF: {

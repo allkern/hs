@@ -44,6 +44,14 @@ namespace hs {
             return "unimplemented_operator";
         }
 
+        static std::string map_branch(std::string cond) {
+            if (cond == "EQ") return "beq";
+            if (cond == "NE") return "bne";
+            if (cond == "AL") return "bra";
+
+            return "unimplemented_branch";
+        }
+
         static std::string fmt_label(std::string label) {
             if (std::isdigit(label[0])) {
                 return label;
@@ -58,6 +66,8 @@ namespace hs {
                     continue;
                 } else if (c == '.') {
                     ss << '_';
+                } else if (c == '!') {
+                    ss << '.';
                 } else {
                     ss << c;
                 }
@@ -150,7 +160,11 @@ namespace hs {
 
                         case IR_SUBSP: {
                             ss << "sub.u sp, " << i.args[0];
-                        }
+                        } break;
+
+                        case IR_BRANCH: {
+                            ss << map_branch(i.args[0]) << " " << i.args[1];
+                        } break;
                     }
 
                     ss << std::endl;
