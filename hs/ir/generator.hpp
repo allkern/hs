@@ -20,6 +20,8 @@ namespace hs {
 
         int m_current = 0,
             m_prev = m_current;
+        
+        int m_loops = 0;
 
         std::unordered_map <std::string, int> m_local_map;
 
@@ -29,6 +31,7 @@ namespace hs {
         void begin_function() {
             m_prev = m_current;
             m_current = m_functions.size();
+            m_loops = 0;
 
             m_functions.push_back(m_dummy);
         }
@@ -56,6 +59,20 @@ namespace hs {
 
         uint32_t generate_impl(expression_t* expr, int base, bool pointer = false, bool inside_fn = false) {
             switch (expr->get_type()) {
+                case EX_WHILE_LOOP: {
+                    while_loop_t* wl = (while_loop_t*)expr;
+
+                    int m_this_loop = m_loops++;
+
+                    append({IR_LABEL, ".L" + std::to_string(m_this_loop)});
+
+                    generate_impl(wl->body, base, false, inside_fn);
+
+                    generate_impl(wl->condition, base, false, inside_fn);
+
+                    append({IR_BRANCH, "NE", ".L" + std::to_string(m_this_loop)});
+                } break;
+
                 case EX_FUNCTION_DEF: {
                     function_def_t* fd = (function_def_t*)expr;
 
