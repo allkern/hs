@@ -221,6 +221,13 @@ namespace hs {
                     contextualize_impl(ie->ptr);
                 } break;
 
+                case EX_WHILE_LOOP: {
+                    while_loop_t* wl = (while_loop_t*)expr;
+
+                    contextualize_impl(wl->condition);
+                    contextualize_impl(wl->body);
+                } break;
+
                 case EX_NUMERIC_LITERAL: {
 
                 } break;
