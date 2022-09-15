@@ -80,6 +80,8 @@ int main(int argc, const char* argv[]) {
 
     std::string assembly = translator.translate();
 
+    std::cout << assembly;
+
     std::stringstream source(assembly);
 
     hs::preprocessor_t assembly_pp;

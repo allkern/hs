@@ -67,13 +67,18 @@ namespace hs {
                     // To-do: clean this up
                     append({IR_LABEL, "!L" + std::to_string(m_this_loop)});
 
-                    generate_impl(wl->body, base, false, inside_fn);
-
                     generate_impl(wl->condition, base, false, inside_fn);
 
                     append({IR_CMPRI, "R" + std::to_string(base), "0"});
 
-                    append({IR_BRANCH, "NE", "L" + std::to_string(m_this_loop)});
+                    append({IR_BRANCH, "EQ", "E" + std::to_string(m_this_loop)});
+
+                    generate_impl(wl->body, base, false, inside_fn);
+
+                    append({IR_BRANCH, "AL", "L" + std::to_string(m_this_loop)});
+
+                    append({IR_LABEL, "!E" + std::to_string(m_this_loop)});
+                    
                 } break;
 
                 case EX_FUNCTION_DEF: {

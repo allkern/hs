@@ -41,6 +41,8 @@ namespace hs {
         std::unordered_map <std::string, uint32_t> m_symbol_map;
         std::unordered_map <std::string, uint32_t> m_local_map;
 
+        std::string m_current_function = "global";
+
         int m_pass = 0;
     
         uint32_t m_pos = 0;
@@ -1460,11 +1462,19 @@ namespace hs {
                     // Operand is a name
                     if (m_symbol_map.contains(name)) {
                         value = m_symbol_map[name];
+
                         found = true;
                     }
 
-                    if (m_local_map.contains(name)) {
-                        value = m_local_map[name] - (m_pos + 4);
+                    if (m_local_map.contains(name + m_current_function)) {
+                        uint32_t addr = m_local_map[name + m_current_function];
+
+                        if (addr < m_pos) {
+                            value = addr - (m_pos + 4);
+                        } else {
+                            value = addr - m_pos;
+                            value -= 4;
+                        }
 
                         found = true;
                     }
@@ -1698,8 +1708,15 @@ namespace hs {
 
                         // _log(debug, "symbol=%s", symbol.c_str());
 
-                        if (m_local_map.contains(symbol)) {
-                            value = m_local_map[symbol] - m_pos;
+                        if (m_local_map.contains(symbol + m_current_function)) {
+                            uint32_t addr = m_local_map[symbol + m_current_function];
+
+                            if (addr < m_pos) {
+                                value = addr - (m_pos + 4);
+                            } else {
+                                value = addr - m_pos;
+                                value -= 4;
+                            }
 
                             goto found;
                         }
@@ -1757,7 +1774,7 @@ namespace hs {
                     return;
                 }
 
-                m_local_map.insert({str, m_pos});
+                m_local_map.insert({str + m_current_function, m_pos});
 
                 m_current = m_input->get();
 
@@ -1808,9 +1825,10 @@ namespace hs {
             }
 
             if (m_current == ':') {
-                m_local_map.clear();
-
+                //m_local_map.clear();
                 m_symbol_map.insert({name, m_pos});
+
+                m_current_function = name;
 
                 // Consume :
                 m_current = m_input->get();
