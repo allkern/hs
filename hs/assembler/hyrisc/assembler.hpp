@@ -1464,7 +1464,7 @@ namespace hs {
                     }
 
                     if (m_local_map.contains(name)) {
-                        value = m_local_map[name] - m_pos;
+                        value = m_local_map[name] - (m_pos + 4);
 
                         found = true;
                     }

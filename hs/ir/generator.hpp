@@ -71,6 +71,9 @@ namespace hs {
 
                     generate_impl(wl->condition, base, false, inside_fn);
 
+                    // Implement compare with 0
+                    // CMP R0, 0
+
                     append({IR_BRANCH, "NE", "L" + std::to_string(m_this_loop)});
                 } break;
 
