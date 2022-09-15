@@ -115,6 +115,10 @@ namespace hs {
                         case IR_DECSP: {
                             ss << "dec.l sp";
                         } break;
+                        
+                        case IR_ADDFP: {
+                            ss << "add.u fp, " << i.args[0];
+                        } break;
 
                         case IR_LEAF: {
                             ss << "lea.l " << map_register(i.args[0]) << ", [fp-" << i.args[1] << "]";
