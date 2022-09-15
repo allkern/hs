@@ -80,8 +80,6 @@ int main(int argc, const char* argv[]) {
 
     std::string assembly = translator.translate();
 
-    hs::hyrisc_assembler_t as;
-
     std::stringstream source(assembly);
 
     hs::preprocessor_t assembly_pp;
@@ -91,6 +89,8 @@ int main(int argc, const char* argv[]) {
     assembly_pp.preprocess();
 
     std::ofstream binary("a.out", std::ios::binary);
+
+    hs::hyrisc_assembler_t as;
 
     as.init(assembly_pp.get_output(), &binary, &error_logger);
 

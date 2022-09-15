@@ -1459,7 +1459,8 @@ namespace hs {
                     }
 
                     if (m_local_map.contains(name)) {
-                        value = m_local_map[name];
+                        value = m_local_map[name] - m_pos;
+
                         found = true;
                     }
 
@@ -1572,18 +1573,6 @@ namespace hs {
             uint32_t imm8     = (m_instruction.imm8 & 0xff) << 20;
             uint32_t imm16    = (m_instruction.imm16 & 0xffff) << 15;
 
-            // _log(debug, "opcode=%02x, encoding=%u, fieldx=%04x, fieldy=%04x, fieldz=%04x, fieldw=%04x, size=%04x, imm8=%02x, imm16=%04x",
-            //     m_instruction.opcode,
-            //     m_instruction.encoding,
-            //     m_instruction.fieldx,
-            //     m_instruction.fieldy,
-            //     m_instruction.fieldz,
-            //     m_instruction.fieldw,
-            //     m_instruction.size,
-            //     m_instruction.imm8,
-            //     m_instruction.imm16
-            // );
-
             uint32_t encoded = 0;
 
             switch (m_instruction.encoding) {
@@ -1592,6 +1581,20 @@ namespace hs {
                 case ENC_2: { encoded = opcode | encoding | fieldx | imm16; } break;
                 case ENC_1: { ERROR("Encoding 0 (1) is unsupported"); } break;
             }
+
+            // _log(debug, "mode=%i, opcode=%02x, encoding=%u, fieldx=%04x, fieldy=%04x, fieldz=%04x, fieldw=%04x, size=%04x, imm8=%02x, imm16=%04x, encoded=%08x",
+            //     m_instruction.mode,
+            //     m_instruction.opcode,
+            //     m_instruction.encoding,
+            //     m_instruction.fieldx,
+            //     m_instruction.fieldy,
+            //     m_instruction.fieldz,
+            //     m_instruction.fieldw,
+            //     m_instruction.size,
+            //     m_instruction.imm8,
+            //     m_instruction.imm16,
+            //     encoded
+            // );
 
             return encoded;
         }
@@ -1625,6 +1628,7 @@ namespace hs {
 
             uint32_t value;
 
+            // Operand is an integer
             if (std::isdigit(m_current) || m_current == '-' || m_current == '\'') {
                 switch (m_pass) {
                     case 0: {
@@ -1687,8 +1691,10 @@ namespace hs {
                     case 1: {
                         std::string symbol = parse_name();
 
+                        // _log(debug, "symbol=%s", symbol.c_str());
+
                         if (m_local_map.contains(symbol)) {
-                            value = m_local_map[symbol];
+                            value = m_local_map[symbol] - m_pos;
 
                             goto found;
                         }

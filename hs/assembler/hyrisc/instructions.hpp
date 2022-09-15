@@ -28,20 +28,17 @@ namespace hs {
     };
 
     hyrisc_encoding_t hyrisc_mode_encoding[14] = {
-        ENC_4,    // OP_RX
-        ENC_4,    // OP_RXRY
-        ENC_2,    // OP_RXI16
-        ENC_4,    // OP_RXRYRZ
-        ENC_3,    // OP_RXRYI8
-        ENC_4,    // OP_RXIND
-        ENC_4,    // OP_RXFIXA
-        ENC_4,    // OP_RXFIXS
-        ENC_2,    // OP_I16
-        ENC_2,    // OP_CONDI
-        ENC_4,    // OP_CONDR
-        ENC_4,    // OP_COND
-        ENC_4,    // OP_RANGE
-        ENC_4     // OP_NONE
+        ENC_4, // OP_RX
+        ENC_4, // OP_RXRY
+        ENC_2, // OP_RXI16
+        ENC_4, // OP_RXRYRZ
+        ENC_3, // OP_RXRYI8
+        ENC_4, // OP_RXIND
+        ENC_4, // OP_RXFIX
+        ENC_2, // OP_I16
+        ENC_4, // OP_INDEX
+        ENC_4, // OP_RANGE
+        ENC_4  // OP_NONE
     };
 
     enum hyrisc_opcode_t {
