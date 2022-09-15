@@ -55,6 +55,8 @@ namespace hs {
         HY_STOREFS   = 0xf5, // STORE Fixed Sub
         HY_LEAM      = 0xf4, // LEA Multiply
         HY_LEAS      = 0xf3, // LEA Shift
+        HY_LEAFA     = 0xf2, // LEA Fixed Add
+        HY_LEAFS     = 0xf1, // LEA Fixed Sub
         HY_ADDR      = 0xef, // ADD Register
         HY_ADDUI8    = 0xee, // ADD Unsigned Immediate 8
         HY_ADDUI16   = 0xed, // ADD Unsigned Immediate 16

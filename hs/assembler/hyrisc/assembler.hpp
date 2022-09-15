@@ -22,8 +22,7 @@ namespace hs {
         "OP_RXRYRZ",
         "OP_RXRYI8",
         "OP_RXIND",
-        "OP_RXFIXA",
-        "OP_RXFIXS",
+        "OP_RXFIX",
         "OP_I16",
         "OP_INDEX",
         "OP_RANGE",
@@ -551,6 +550,12 @@ namespace hs {
                 case IM_LEA: {
                     if (m_instruction.mode == OP_RXIND) {
                         m_instruction.opcode = m_instruction.shift ? HY_LEAS : HY_LEAM;
+
+                        return;
+                    }
+
+                    if (m_instruction.mode == OP_RXFIX) {
+                        m_instruction.opcode = m_instruction.add ? HY_LEAFA : HY_LEAFS;
 
                         return;
                     }
