@@ -12,6 +12,7 @@ namespace hs {
         IR_STORE,       // Store register on register
         IR_ADDSP,       // Add Immediate to Stack Pointer
         IR_SUBSP,       // Subtract Immediate from Stack Pointer
+        IR_ADDFP,       // Add Immediate to Frame Pointer
         IR_DECSP,       // Decrement Stack Pointer
         IR_CALLR,       // Call register
         IR_PUSHR,       // Push register

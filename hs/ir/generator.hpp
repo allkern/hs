@@ -157,7 +157,7 @@ namespace hs {
                 case EX_FUNCTION_CALL: {
                     function_call_t* fc = (function_call_t*)expr;
 
-                    append({IR_MOV, "FP", "SP"});
+                    append({IR_PUSHR, "FP"});
 
                     for (expression_t* exp : fc->args) {
                         generate_impl(exp, base, false, inside_fn);
@@ -165,11 +165,16 @@ namespace hs {
                         append({IR_PUSHR, "R" + std::to_string(base)});
                     }
 
+                    append({IR_MOV, "FP", "SP"});
+                    append({IR_ADDFP, std::to_string(fc->args.size() * 4)});
+
                     generate_impl(fc->addr, base, true, inside_fn);
 
                     append({IR_CALLR, "R" + std::to_string(base)});
                     append({IR_MOV, "R" + std::to_string(base), "A0"});
+
                     append({IR_MOV, "SP", "FP"});
+                    append({IR_POPR, "FP"});
 
                     return 1;
                 } break;
@@ -260,11 +265,13 @@ namespace hs {
             }
             
             // Function call semantics
+            append({IR_PUSHR, "FP"});
             append({IR_MOV, "FP", "SP"});
             m_functions.at(0).push_back({IR_MOVI, "R0", "<global>.main"});
             m_functions.at(0).push_back({IR_CALLR, "R0"});
             append({IR_MOV, "R0", "A0"});
             append({IR_MOV, "SP", "FP"});
+            append({IR_POPR, "FP"});
 
             // This will only work with Hyrisc for now.
             // just ignore and remove whenever needed
