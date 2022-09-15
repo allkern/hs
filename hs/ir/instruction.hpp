@@ -15,6 +15,7 @@ namespace hs {
         IR_DECSP,       // Decrement Stack Pointer
         IR_CALLR,       // Call register
         IR_PUSHR,       // Push register
+        IR_POPR,        // Pop register
         IR_LEAF,        // Push register
         IR_RET,         // Return from subroutine
         IR_ALU,         // ALU instruction

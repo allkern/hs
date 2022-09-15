@@ -144,6 +144,10 @@ namespace hs {
                             ss << "push " << map_register(i.args[0]);
                         } break;
 
+                        case IR_POPR: {
+                            ss << "pop " << map_register(i.args[0]);
+                        } break;
+
                         case IR_RET: {
                             ss << "ret";
 
