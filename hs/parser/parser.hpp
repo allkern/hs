@@ -11,6 +11,7 @@
 
 #include "expressions/expression_block.hpp"
 #include "expressions/numeric_literal.hpp"
+#include "expressions/string_literal.hpp"
 #include "expressions/function_call.hpp"
 #include "expressions/array_access.hpp"
 #include "expressions/variable_def.hpp"
@@ -233,6 +234,24 @@ namespace hs {
             m_current = m_input->get();
 
             return num;
+        }
+
+        expression_t* parse_string_literal() {
+            if (m_current.type != LT_LITERAL_STRING) {
+                assert(false); // ??
+            }
+
+            string_literal_t* str = new string_literal_t;
+
+            str->line = m_current.line;
+            str->offset = m_current.offset;
+            str->len = m_current.text.size();
+
+            str->str = m_current.text;
+
+            m_current = m_input->get();
+
+            return str;
         }
 
         expression_t* parse_invoke() {
@@ -588,6 +607,10 @@ hs::expression_t* hs::parser_t::parse_expression_impl() {
 
         case LT_LITERAL_NUMERIC: {
             expr = parse_numeric_literal();
+        } break;
+
+        case LT_LITERAL_STRING: {
+            expr = parse_string_literal();
         } break;
 
         case LT_KEYWORD_INVOKE: {
