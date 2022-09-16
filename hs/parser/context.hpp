@@ -228,6 +228,16 @@ namespace hs {
                     contextualize_impl(wl->body);
                 } break;
 
+                case EX_IF_ELSE: {
+                    if_else_t* ie = (if_else_t*)expr;
+
+                    contextualize_impl(ie->cond);
+                    contextualize_impl(ie->if_expr);
+
+                    if (ie->else_expr)
+                        contextualize_impl(ie->else_expr);
+                } break;
+
                 case EX_NUMERIC_LITERAL: {
 
                 } break;

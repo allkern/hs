@@ -59,6 +59,30 @@ namespace hs {
 
         uint32_t generate_impl(expression_t* expr, int base, bool pointer = false, bool inside_fn = false) {
             switch (expr->get_type()) {
+                case EX_IF_ELSE: {
+                    if_else_t* ie = (if_else_t*)expr;
+
+                    int m_this_loop = m_loops++;
+
+                    generate_impl(ie->cond, base, false, inside_fn);
+
+                    append({IR_CMPRI, "R" + std::to_string(base), "0"});
+
+                    append({IR_BRANCH, "EQ", "E" + std::to_string(m_this_loop)});
+
+                    generate_impl(ie->if_expr, base, false, inside_fn);
+
+                    if (ie->else_expr) {
+                        append({IR_BRANCH, "AL", "L" + std::to_string(m_this_loop)});
+
+                        append({IR_LABEL, "!E" + std::to_string(m_this_loop)});
+
+                        generate_impl(ie->else_expr, base, false, inside_fn);
+                    }
+
+                    append({IR_LABEL, "!L" + std::to_string(m_this_loop)});
+                } break;
+
                 case EX_WHILE_LOOP: {
                     while_loop_t* wl = (while_loop_t*)expr;
 
@@ -78,7 +102,6 @@ namespace hs {
                     append({IR_BRANCH, "AL", "L" + std::to_string(m_this_loop)});
 
                     append({IR_LABEL, "!E" + std::to_string(m_this_loop)});
-                    
                 } break;
 
                 case EX_FUNCTION_DEF: {

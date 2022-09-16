@@ -26,7 +26,7 @@ namespace hs {
         }
 
         expression_type_t get_type() override {
-            return EX_WHILE_LOOP;
+            return EX_IF_ELSE;
         }
     };
 }
