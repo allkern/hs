@@ -25,7 +25,8 @@ namespace hs {
         EX_TYPE,
         EX_VARIABLE_DEF,
         EX_ASM_BLOCK,
-        EX_WHILE_LOOP
+        EX_WHILE_LOOP,
+        EX_IF_ELSE
     };
 
     class eval_t {
