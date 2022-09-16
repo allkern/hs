@@ -22,6 +22,7 @@ namespace hs {
         EX_INVOKE,
         EX_NAME_REF,
         EX_NUMERIC_LITERAL,
+        EX_STRING_LITERAL,
         EX_TYPE,
         EX_VARIABLE_DEF,
         EX_ASM_BLOCK,
