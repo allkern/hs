@@ -174,6 +174,10 @@ namespace hs {
                             ss << map_branch(i.args[0]) << " " << i.args[1];
                         } break;
 
+                        case IR_DEFSTR: {
+                            ss << ".asciiz " << i.args[0];
+                        } break;
+
                         case IR_CMPRI: {
                             ss << "cmp " << map_register(i.args[0]) << ", " << i.args[1];
                         } break;
