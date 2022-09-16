@@ -21,12 +21,30 @@ namespace hs {
         int m_current = 0,
             m_prev = m_current;
         
-        int m_loops = 0;
+        int m_loops = 0,
+            m_strings = 0;
+
+        struct string_t {
+            std::string name, value;
+        };
+        
+        std::vector <string_t> m_pending_strings;
 
         std::unordered_map <std::string, int> m_local_map;
 
         int m_num_locals = 0, 
             m_num_args = 0;
+
+        std::string new_string(std::string str) {
+            string_t string;
+
+            string.name = "S" + std::to_string(m_strings++);
+            string.value = str;
+
+            m_pending_strings.push_back(string);
+
+            return string.name; 
+        }
         
         void begin_function() {
             m_prev = m_current;
@@ -81,6 +99,16 @@ namespace hs {
                     }
 
                     append({IR_LABEL, "!L" + std::to_string(m_this_loop)});
+                } break;
+                
+                case EX_STRING_LITERAL: {
+                    string_literal_t* sl = (string_literal_t*)expr;
+
+                    std::string label = new_string(sl->str);
+
+                    append({IR_MOVI, "R" + std::to_string(base), label});
+
+                    return 1;
                 } break;
 
                 case EX_WHILE_LOOP: {
@@ -290,22 +318,26 @@ namespace hs {
             m_functions.at(0).push_back({IR_LABEL, "<ENTRY>"});
 
             for (expression_t* expr : m_po->source) {
-                //_log(debug, "\n%s:", expr->print(0).c_str());
                 generate_impl(expr, 0);
             }
             
             // Function call semantics
-            append({IR_PUSHR, "FP"});
-            append({IR_MOV, "FP", "SP"});
+            m_functions.at(0).push_back({IR_PUSHR, "FP"});
+            m_functions.at(0).push_back({IR_MOV, "FP", "SP"});
             m_functions.at(0).push_back({IR_MOVI, "R0", "<global>.main"});
             m_functions.at(0).push_back({IR_CALLR, "R0"});
-            append({IR_MOV, "R0", "A0"});
-            append({IR_MOV, "SP", "FP"});
-            append({IR_POPR, "FP"});
+            m_functions.at(0).push_back({IR_MOV, "R0", "A0"});
+            m_functions.at(0).push_back({IR_MOV, "SP", "FP"});
+            m_functions.at(0).push_back({IR_POPR, "FP"});
 
             // This will only work with Hyrisc for now.
             // just ignore and remove whenever needed
             m_functions.at(0).push_back({IR_PASSTHROUGH, "debug"});
+
+            for (string_t& str : m_pending_strings) {
+                m_functions.at(m_functions.size() - 1).push_back({IR_LABEL, str.name});
+                m_functions.at(m_functions.size() - 1).push_back({IR_DEFSTR, str.value});
+            }
         }
     };
 }
