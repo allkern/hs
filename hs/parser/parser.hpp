@@ -20,6 +20,7 @@
 #include "expressions/asm_block.hpp"
 #include "expressions/binary_op.hpp"
 #include "expressions/name_ref.hpp"
+#include "expressions/if_else.hpp"
 #include "expressions/invoke.hpp"
 #include "expressions/type.hpp"
 
@@ -296,6 +297,56 @@ namespace hs {
             return ref;
         }
 
+        expression_t* parse_if_else() {
+            if (m_current.type != LT_KEYWORD_IF) {
+                assert(false); // ??
+            }
+
+            if_else_t* ifl = new if_else_t;
+
+            ifl->line = m_current.line;
+            ifl->offset = m_current.offset;
+            ifl->len = m_current.text.size();
+
+            m_current = m_input->get();
+
+            if (m_current.type != LT_OPENING_PARENT) {
+                ERROR("Expected opening parenthesis after if");
+            }
+
+            m_current = m_input->get();
+
+            ifl->cond = parse_expression();
+
+            if (m_current.type != LT_CLOSING_PARENT) {
+                ERROR("Expected closing parenthesis after if condition");
+            }
+
+            m_current = m_input->get();
+
+            if (m_current.type != LT_COLON) {
+                ERROR("Expected colon after closing parenthesis");
+            }
+
+            m_current = m_input->get();
+
+            ifl->if_expr = parse_expression();
+
+            if (m_current.type == LT_KEYWORD_ELSE) {
+                m_current = m_input->get();
+
+                if (m_current.type != LT_COLON) {
+                    ERROR("Expected colon after else");
+                }
+
+                m_current = m_input->get();
+
+                ifl->else_expr = parse_expression();
+            }
+
+            return ifl;
+        }
+
         expression_t* parse_while_loop() {
             if (m_current.type != LT_KEYWORD_WHILE) {
                 assert(false); // ??
@@ -529,6 +580,10 @@ hs::expression_t* hs::parser_t::parse_expression_impl() {
 
         case LT_KEYWORD_WHILE: {
             expr = parse_while_loop();
+        } break;
+
+        case LT_KEYWORD_IF: {
+            expr = parse_if_else();
         } break;
 
         case LT_LITERAL_NUMERIC: {

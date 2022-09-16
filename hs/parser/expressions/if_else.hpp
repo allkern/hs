@@ -7,7 +7,8 @@
 #include <sstream>
 
 namespace hs {
-    struct while_loop_t : public expression_t {
+    struct if_else_t : public expression_t {
+        expression_t* cond;
         expression_t* if_expr;
         expression_t* else_expr;
 
