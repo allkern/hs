@@ -35,6 +35,10 @@ namespace hs {
         int m_num_locals = 0, 
             m_num_args = 0;
 
+        std::string get_variable_name(std::string str) {
+            return "arg_" + str.substr(str.find_last_of('.') + 1);
+        }
+
         std::string new_string(std::string str) {
             string_t string;
 
@@ -149,12 +153,22 @@ namespace hs {
 
                     append({IR_LABEL, fd->name});
 
+                    int arg_frame_pos = 1;
+
+                    for (function_arg_t& arg : fd->args) {
+                        append({IR_DEFINE, get_variable_name(arg.name), "[fp-" + std::to_string(4 * (arg_frame_pos++)) + "]"});
+                    }
+
                     generate_impl(fd->body, base, false, true);
 
                     append({IR_MOV, "A0", "R" + std::to_string(base)});
 
                     if (m_num_locals) {
                         append({IR_ADDSP, std::to_string(m_num_locals * 4)});
+                    }
+
+                    for (function_arg_t& arg : fd->args) {
+                        append({IR_UNDEF, get_variable_name(arg.name)});
                     }
 
                     append({IR_RET});
