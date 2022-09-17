@@ -8,6 +8,9 @@
 
 namespace hs {
     struct array_access_t : public expression_t {
+        // To-do: IR Unimplemented
+        // Implement indexed array access
+
         expression_t* type_or_name;
         expression_t* addr;
 

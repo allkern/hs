@@ -86,7 +86,7 @@ namespace hs {
 
                     append({IR_CMPRI, "R" + std::to_string(base), "0"});
 
-                    append({IR_BRANCH, "EQ", "E" + std::to_string(m_this_loop)});
+                    append({IR_BRANCH, "EQ", (ie->else_expr ? "E" : "L") + std::to_string(m_this_loop)});
 
                     generate_impl(ie->if_expr, base, false, inside_fn);
 
@@ -277,8 +277,8 @@ namespace hs {
                 case EX_BINARY_OP: {
                     binary_op_t* bo = (binary_op_t*)expr;
 
-                    int lhs = generate_impl(bo->lhs, base, false, inside_fn);
-                    int rhs = generate_impl(bo->rhs, base + lhs, false, inside_fn);
+                    int rhs = generate_impl(bo->rhs, base, false, inside_fn);
+                    int lhs = generate_impl(bo->lhs, base + rhs, false, inside_fn);
 
                     append({IR_ALU, std::string(1, bo->bop), "R" + std::to_string(base), "R" + std::to_string(base + lhs)});
 
@@ -300,10 +300,10 @@ namespace hs {
                 case EX_ASSIGNMENT: {
                     assignment_t* ae = (assignment_t*)expr;
 
-                    int lhs = generate_impl(ae->assignee, base, true, inside_fn);
-                    int rhs = generate_impl(ae->value, base + lhs, false, inside_fn);
+                    int rhs = generate_impl(ae->value, base, false, inside_fn);
+                    int lhs = generate_impl(ae->assignee, base + rhs, true, inside_fn);
 
-                    append({IR_STORE, "R" + std::to_string(base), "R" + std::to_string(base + lhs)});
+                    append({IR_STORE, "R" + std::to_string(base + rhs), "R" + std::to_string(base)});
 
                     return lhs + rhs;
                 } break;

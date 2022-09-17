@@ -435,6 +435,12 @@ namespace hs {
 
             call->addr = addr;
 
+            if (m_current.type == LT_CLOSING_PARENT) {
+                m_current = m_input->get();
+
+                return call;
+            }
+
             while (m_current.type != LT_CLOSING_PARENT) {
                 call->args.push_back(parse_expression());
 
