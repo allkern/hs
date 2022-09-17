@@ -521,7 +521,7 @@ namespace hs {
 
         expression_t* parse_rightside_operation(expression_t* lhs) {
             switch (m_current.type) {
-                case LT_OPERATOR_BINARY: case LT_STAR: {
+                case LT_OPERATOR_BINARY: case LT_STAR: case LT_AMPERSAND: {
                     return parse_binary_operation(lhs);
                 } break;
 
