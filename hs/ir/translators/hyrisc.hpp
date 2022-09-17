@@ -175,7 +175,7 @@ namespace hs {
                         } break;
 
                         case IR_DEFSTR: {
-                            ss << ".asciiz " << i.args[0];
+                            ss << ".asciiz \"" << i.args[0] << "\"";
                         } break;
 
                         case IR_CMPRI: {

@@ -1151,6 +1151,48 @@ namespace hs {
             return value;
         }
 
+        std::string parse_string() {
+            if (m_current != '\"') {
+                ERROR("Expected \" before a string");
+
+                return "";
+            }
+
+            std::string string;
+
+            m_current = m_input->get();
+
+            while (m_current != '\"') {
+                // Parse escape sequences
+                if (m_current == '\\') {
+                    m_current = m_input->get();
+
+                    switch (m_current) {
+                        case 'a' : { m_current = '\x07'; } break; // Alert (Beep, Bell) (added in C89)[1]
+                        case 'b' : { m_current = '\x08'; } break; // Backspace
+                        case 'e' : { m_current = '\x1b'; } break; // Escape character
+                        case 'f' : { m_current = '\x0c'; } break; // Formfeed Page Break
+                        case 'n' : { m_current = '\x0a'; } break; // Newline (Line Feed); see notes below
+                        case 'r' : { m_current = '\x0d'; } break; // Carriage Return
+                        case 't' : { m_current = '\x09'; } break; // Horizontal Tab
+                        case 'v' : { m_current = '\x0b'; } break; // Vertical Tab
+                        case '\\': { m_current = '\x5c'; } break; // Backslash
+                        case '\'': { m_current = '\x27'; } break; // Apostrophe or single quotation mark
+                        case '\"': { m_current = '\x22'; } break; // Double quotation mark
+                        // To-do: Parse \xNN and \uNNNN style sequences
+                    }
+                }
+
+                string.push_back(m_current);
+
+                m_current = m_input->get();
+            }
+
+            m_current = m_input->get();
+
+            return string;
+        }
+
         uint32_t parse_integer() {
             bool negative = false;
 
@@ -1622,13 +1664,45 @@ namespace hs {
 
         enum directive_t {
             AD_LOAD32,
+            AD_ASCII,
+            AD_ASCIIZ,
             AD_ELF_TEXT
         };
 
         std::unordered_map <std::string, directive_t> m_directive_map = {
             { "load32", AD_LOAD32 },
+            { "ascii" , AD_ASCII },
+            { "asciiz", AD_ASCIIZ },
             { "text", AD_ELF_TEXT }
         };
+
+        void handle_asciiz(bool zt) {
+            std::string str = parse_string();
+
+            if (!str.size()) {
+                ERROR("Expected string after ascii/asciiz");
+            }
+
+            if (m_pass == 0) {
+                m_pos += str.size();
+
+                if (zt) {
+                    m_pos++;
+                }
+            } else {
+                m_pos += str.size();
+
+                m_output->write(str.c_str(), str.size());
+
+                if (zt) {
+                    m_pos++;
+
+                    char zero = '\0';
+
+                    m_output->write(&zero, sizeof(char));
+                }
+            }
+        }
 
         void handle_load32() {
             std::string reg = parse_name();
@@ -1787,6 +1861,8 @@ namespace hs {
 
             switch (directive) {
                 case AD_LOAD32: { handle_load32(); } break;
+                case AD_ASCII : { handle_asciiz(false); } break;
+                case AD_ASCIIZ: { handle_asciiz(true); } break;
             }
 
             consume_until_eol();
