@@ -24,6 +24,7 @@ namespace hs {
         IR_FPU,         // FPU instruction
         IR_BRANCH,      // Branch (ne, eq, etc.)
         IR_DEFINE,      // Assembly define
+        IR_UNDEF,       // Assembly undef
         IR_DEFSTR,      // Define string
         IR_PASSTHROUGH, // Passthrough, will emit its first argument verbatim
         IR_NOP          // NOP
