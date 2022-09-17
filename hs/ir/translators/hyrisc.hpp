@@ -181,6 +181,10 @@ namespace hs {
                         case IR_DEFINE: {
                             ss << "#define " << i.args[0] << " " << i.args[1];
                         } break;
+                        
+                        case IR_UNDEF: {
+                            ss << "#undef " << i.args[0];
+                        } break;
 
                         case IR_CMPRI: {
                             ss << "cmp " << map_register(i.args[0]) << ", " << i.args[1];
