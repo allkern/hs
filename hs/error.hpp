@@ -18,7 +18,7 @@ namespace hs {
 
     struct error_logger_t {
         std::vector <std::string> m_source;
-        std::string m_filename;
+        std::string m_filename = "";
 
         std::string get_error_highlighted_string(std::string str, int start, int end) {
             return str.substr(0, start) + ESCAPE(31;1) + str.substr(start, end - start) + ESCAPE(0) + str.substr(end);
@@ -108,7 +108,7 @@ namespace hs {
                         col + 1
                     );
                 } else {
-                    _log(error, "in " ESCAPE(37;1) "%s: " ESCAPE(0) "%s: %s",
+                    _log(error, ESCAPE(37;1) "%s: " ESCAPE(0) "%s",
                         module.c_str(),
                         err.c_str()
                     );

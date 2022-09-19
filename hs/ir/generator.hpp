@@ -141,8 +141,14 @@ namespace hs {
 
                     begin_function();
 
+                    append({IR_LABEL, fd->name});
+
+                    int arg_frame_pos = 1;
+
                     for (function_arg_t& arg : fd->args) {
                         m_num_args++;
+
+                        append({IR_DEFINE, get_variable_name(arg.name), "[fp-" + std::to_string(4 * (arg_frame_pos++)) + "]"});
 
                         m_local_map.insert({arg.name, m_num_args * 4});
                     }
@@ -150,14 +156,6 @@ namespace hs {
                     m_num_args++;
 
                     m_local_map.insert({"<return_address>", m_num_args * 4});
-
-                    append({IR_LABEL, fd->name});
-
-                    int arg_frame_pos = 1;
-
-                    for (function_arg_t& arg : fd->args) {
-                        append({IR_DEFINE, get_variable_name(arg.name), "[fp-" + std::to_string(4 * (arg_frame_pos++)) + "]"});
-                    }
 
                     generate_impl(fd->body, base, false, true);
 

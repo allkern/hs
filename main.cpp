@@ -4,6 +4,7 @@
 #include <cctype>
 #include <stack>
 
+#include "hs/cli.hpp"
 #include "hs/lexer/lexer.hpp"
 #include "hs/parser/parser.hpp"
 #include "hs/parser/context.hpp"
@@ -16,87 +17,78 @@
 int main(int argc, const char* argv[]) {
     _log::init("hs");
 
-    std::string filename;
+    hs::error_logger_t error_logger;
+    hs::cli_parser_t cli;
 
-    if (argv[1]) {
-        filename = std::string(argv[1]);
-    } else {
-        filename = "test.hs";
+    cli.init(argc, argv, &error_logger);
+
+    if (!cli.parse()) {
+        error_logger.print_error("hs", "compilation terminated", 0, 0, 0, false, true);
+
+        return 1;
     }
 
-    std::ifstream file(filename, std::ios::binary);
+    return 0;
 
-    // hs::hyrisc_assembler_t as;
-    // hs::error_logger_t error_logger;
-    // hs::preprocessor_t assembly_pp;
+    // hs::preprocessor_t preprocessor;
+    
+    // hs::lexer_t lexer;
+    // hs::parser_t parser;
+    // hs::contextualizer_t contextualizer;
+    // hs::ir_generator_t ir_generator;
 
-    // error_logger.init(&file, filename);
-    // assembly_pp.init(&file, nullptr);
-    // assembly_pp.preprocess();
-    // as.init(assembly_pp.get_output(), &error_logger);
-    // as.assemble();
+    // preprocessor.init(&file, &error_logger);
+    // preprocessor.preprocess();
 
-    // return 0;
+    // std::stringstream* output = preprocessor.get_output();
 
-    hs::preprocessor_t preprocessor;
-    hs::error_logger_t error_logger;
-    hs::lexer_t lexer;
-    hs::parser_t parser;
-    hs::contextualizer_t contextualizer;
-    hs::ir_generator_t ir_generator;
+    // error_logger.init(output, filename);
 
-    preprocessor.init(&file, &error_logger);
-    preprocessor.preprocess();
+    // lexer.init(output, &error_logger);
+    // lexer.lex();
 
-    std::stringstream* output = preprocessor.get_output();
+    // parser.init(lexer.get_output(), &error_logger);
 
-    error_logger.init(output, filename);
+    // // while (!lexer.eof()) {
+    // //     hs::lexer_token_t token = lexer.get();
 
-    lexer.init(output, &error_logger);
-    lexer.lex();
+    // //     // error_logger.print_error("main", "Successfully lexed token!", token.line, token.offset, token.text.size());
 
-    parser.init(lexer.get_output(), &error_logger);
+    // //     std::cout << "(" << token.line + 1 << ", " << token.offset + 1 << ": type: " << hs::lexer_token_type_names[token.type] << ", text: " << token.text << ")\n";
+    // // }
 
-    // while (!lexer.eof()) {
-    //     hs::lexer_token_t token = lexer.get();
+    // parser.parse();
 
-    //     // error_logger.print_error("main", "Successfully lexed token!", token.line, token.offset, token.text.size());
+    // contextualizer.init(&parser, &error_logger);
+    // contextualizer.contextualize();
 
-    //     std::cout << "(" << token.line + 1 << ", " << token.offset + 1 << ": type: " << hs::lexer_token_type_names[token.type] << ", text: " << token.text << ")\n";
-    // }
+    // ir_generator.init(&parser, &error_logger);
 
-    parser.parse();
+    // ir_generator.generate();
 
-    contextualizer.init(&parser, &error_logger);
-    contextualizer.contextualize();
+    // hs::ir_tr_hyrisc_t translator;
 
-    ir_generator.init(&parser, &error_logger);
+    // translator.init(&ir_generator, &error_logger);
 
-    ir_generator.generate();
-
-    hs::ir_tr_hyrisc_t translator;
-
-    translator.init(&ir_generator, &error_logger);
-
-    std::string assembly = translator.translate();
+    // std::string assembly = translator.translate();
 
     // std::cout << assembly;
 
-    std::stringstream source(assembly);
+    // std::stringstream source(assembly);
 
-    hs::preprocessor_t assembly_pp;
+    // hs::preprocessor_t assembly_pp;
 
-    assembly_pp.init(&source, &error_logger);
+    // assembly_pp.init(&source, &error_logger);
 
-    assembly_pp.preprocess();
+    // assembly_pp.preprocess();
 
-    std::ofstream binary("a.out", std::ios::binary);
+    // std::ofstream binary("a.out", std::ios::binary);
 
-    hs::hyrisc_assembler_t as;
+    // hs::hyrisc_assembler_t as;
 
-    as.init(assembly_pp.get_output(), &binary, &error_logger);
+    // as.init(assembly_pp.get_output(), &binary, &error_logger);
 
-    as.assemble();
+    // as.assemble();
 
     return 0;
 }
