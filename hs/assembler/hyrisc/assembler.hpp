@@ -7,6 +7,8 @@
 #include "../../error.hpp"
 #include "instructions.hpp"
 
+#include "../assembler.hpp"
+
 #define ERROR(msg) \
     if (m_logger) m_logger->print_error( \
         "assembler", \
@@ -28,12 +30,13 @@ namespace hs {
         "OP_RANGE",
         "OP_NONE"
     };
+
     enum output_format_t {
         F_ELF32,
         F_RAW
     };
 
-    class hyrisc_assembler_t {
+    class assembler_hyrisc_t : public assembler_t {
         std::istream* m_input;
         std::ostream* m_output;
         char m_current;
@@ -1973,7 +1976,7 @@ namespace hs {
         }
     
     public:
-        void init(std::istream* input, std::ostream* output, error_logger_t* logger) {
+        void init(std::istream* input, std::ostream* output, error_logger_t* logger) override {
             m_input = input;
             m_output = output;
             m_logger = logger;
@@ -1981,7 +1984,7 @@ namespace hs {
             m_current = m_input->get();
         }
 
-        void assemble() {
+        void assemble() override {
             m_pass = 0;
 
             while (!m_input->eof()) {

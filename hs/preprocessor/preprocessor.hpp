@@ -24,6 +24,9 @@ namespace hs {
             PD_MACRO
         };
 
+        std::vector <std::string>* m_include_paths;
+        std::string m_system_include;
+
         std::unordered_map <std::string, std::string> m_define_map;
 
         std::unordered_map <std::string, directive_t> m_directive_map = {
@@ -90,9 +93,20 @@ namespace hs {
                 return false;
             }
 
-            std::ifstream file(filename, std::ios::binary);
+            std::ifstream file;
 
-            if (!file.is_open() || !file.good()) {
+            for (std::string path : *m_include_paths) {
+                file.open(path + "/" + filename, std::ios::binary);
+
+                if (file.is_open() && file.good()) {
+                    goto found;
+                }
+            }
+
+            file.open(m_system_include + "/" + filename, std::ios::binary);
+
+            if (!(file.is_open() && file.good())) {
+                // Include wasn't found on any of the paths
                 if (m_logger) m_logger->print_error(
                     "preprocessor",
                     fmt("File \"%s\" for include wasn't found", filename.c_str()), 0, 0, false
@@ -101,9 +115,11 @@ namespace hs {
                 return false;
             }
 
+            found:
+
             preprocessor_t include;
 
-            include.init(&file, m_logger);
+            include.init(&file, m_include_paths, m_system_include, m_logger);
             include.preprocess();
 
             // Get defines from the processed file and accumulate
@@ -227,15 +243,19 @@ namespace hs {
 
             if (m_current != -1) m_output.put(m_current);
         }
+
+        std::string m_name;
     
     public:
         std::unordered_map <std::string, std::string>* get_define_map() {
             return &m_define_map;
         }
 
-        void init(std::istream* input, error_logger_t* logger) {
+        void init(std::istream* input, std::vector <std::string>* include_paths, std::string system_include_path, error_logger_t* logger) {
             m_input = input;
             m_logger = logger;
+            m_include_paths = include_paths;
+            m_system_include = system_include_path;
 
             m_current = m_input->get();
         }
@@ -243,8 +263,6 @@ namespace hs {
         std::stringstream* get_output() {
             return &m_output;
         }
-
-        std::string m_name;
 
         void preprocess() {
             while (!m_input->eof()) {

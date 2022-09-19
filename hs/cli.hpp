@@ -28,15 +28,21 @@ namespace hs {
         SW_DEBUG_PARSER_OUTPUT,
         SW_DEBUG_IR_OUTPUT,
         SW_DEBUG_IRT_OUTPUT,
-        SW_DEBUG_ALL
+        SW_DEBUG_ALL,
+        SW_STDIN,
+        SW_STDOUT,
+        SW_STDIO,
+        SW_PRINT_SUCCESS,
+        SW_OUTPUT_SYMBOLS
     };
 
     enum cli_setting_t {
-        ST_INCLUDE_PATH,
+        ST_INCLUDE_PATHS,
         ST_INPUT,
         ST_OUTPUT,
         ST_OUTPUT_FORMAT,
-        ST_OUTPUT_SYMBOLS,
+        ST_TARGET_ARCH,
+        ST_SYSTEM_INCLUDE,
         ST_XLAT,
         ST_HELP_TARGET
     };
@@ -64,22 +70,28 @@ namespace hs {
             WSHORTHAND("-a", "--assemble"            , SW_ASSEMBLE           ),
             WSHORTHAND("-L", "--log"                 , SW_LOG                ),
             WSHORTHAND("-A", "--output-assembly"     , SW_OUTPUT_ASSEMBLY    ),
+            WSHORTHAND("-S", "--output-symbols"      , SW_OUTPUT_SYMBOLS     ),
             LONG_ONLY (      "--help"                , SW_HELP               ),
             LONG_ONLY (      "--only-symbols"        , SW_ONLY_SYMBOLS       ),
             LONG_ONLY (      "--debug-lexer-output"  , SW_DEBUG_LEXER_OUTPUT ),
             LONG_ONLY (      "--debug-parser-output" , SW_DEBUG_PARSER_OUTPUT),
             LONG_ONLY (      "--debug-ir-output"     , SW_DEBUG_IR_OUTPUT    ),
             LONG_ONLY (      "--debug-irt-output"    , SW_DEBUG_IRT_OUTPUT   ),
-            LONG_ONLY (      "--debug-all"           , SW_DEBUG_ALL          )
+            LONG_ONLY (      "--debug-all"           , SW_DEBUG_ALL          ),
+            LONG_ONLY (      "--stdin"               , SW_STDIN              ),
+            LONG_ONLY (      "--stdout"              , SW_STDOUT             ),
+            LONG_ONLY (      "--stdio"               , SW_STDIO              ),
+            LONG_ONLY (      "--print-success"       , SW_PRINT_SUCCESS      ),
         };
 
         std::unordered_map <std::string, cli_setting_t> m_settings_map = {
-            WSHORTHAND("-I", "--include-path"        , ST_INCLUDE_PATH       ),
+            WSHORTHAND("-I", "--include-paths"       , ST_INCLUDE_PATHS      ),
             WSHORTHAND("-i", "--input"               , ST_INPUT              ),
             WSHORTHAND("-o", "--output"              , ST_OUTPUT             ),
             WSHORTHAND("-F", "--output-format"       , ST_OUTPUT_FORMAT      ),
-            WSHORTHAND("-S", "--output-symbols"      , ST_OUTPUT_SYMBOLS     ),
+            WSHORTHAND("-T", "--target-arch"         , ST_TARGET_ARCH        ),
             LONG_ONLY (      "--Xlat"                , ST_XLAT               ),
+            LONG_ONLY (      "--system-include"      , ST_SYSTEM_INCLUDE     ),
             LONG_ONLY (      "--help-target"         , ST_HELP_TARGET        )
         };
 

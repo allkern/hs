@@ -30,9 +30,50 @@ namespace hs {
         IR_NOP          // NOP
     };
 
+    std::string m_ir_mnemonic_map[] = {
+        "LABEL",
+        "MOV",
+        "MOVI",
+        "LOADR",
+        "LOADF",
+        "STORE",
+        "ADDSP",
+        "SUBSP",
+        "ADDFP",
+        "DECSP",
+        "CALLR",
+        "CMPRI",
+        "PUSHR",
+        "POPR",
+        "LEAF",
+        "RET",
+        "ALU",
+        "FPU",
+        "BRANCH",
+        "DEFINE",
+        "UNDEF",
+        "DEFSTR",
+        "PASSTHROUGH",
+        "NOP"
+    };
+
     struct ir_instruction_t {
         ir_opcode_t opcode;
 
         std::string args[4];
     };
+
+    std::string print_ir_instruction(ir_instruction_t& ir) {
+        std::ostringstream ss;
+
+        ss << m_ir_mnemonic_map[ir.opcode] << " ";
+
+        int i = 0;
+
+        while (ir.args[i].size()) {
+            ss << ir.args[i++] << ", ";
+        }
+
+        return ss.str();
+    }
 }
