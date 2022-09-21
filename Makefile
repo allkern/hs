@@ -13,4 +13,6 @@ clean:
 	rm -rf "bin/hs"
 
 install:
+	sudo mkdir -p /usr/include/hs/std
+	sudo cp -rf std/ /usr/include/hs/
 	sudo cp -rf bin/hs /usr/bin/
