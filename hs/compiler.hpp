@@ -255,7 +255,7 @@ namespace hs {
 #ifdef _WIN32
                 m_system_include = "";
 #elif __linux__
-                m_system_include = "/usr/include";
+                m_system_include = "/usr/include/hs";
 #else
                 m_system_include = "";
 #endif
