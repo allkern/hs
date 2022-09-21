@@ -1,0 +1,13 @@
+fn strlen(str: u32) -> int: {
+    int len = 0;
+
+    char c = [str];
+
+    while (c): {
+        len = len + 1;
+
+        c = [str];
+    };
+
+    len;
+};
