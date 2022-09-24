@@ -117,6 +117,7 @@ namespace hs {
           { "x64"    , TGT_ARCH_X64       },
           { "x86-64" , TGT_ARCH_X64       },
           { "x86_64" , TGT_ARCH_X64       },
+          { "amd64"  , TGT_ARCH_X64       },
           { "arm"    , TGT_ARCH_ARM       },
           { "thumb"  , TGT_ARCH_ARM_THUMB },
           { "aarch64", TGT_ARCH_AARCH64   },
