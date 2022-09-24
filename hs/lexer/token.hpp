@@ -37,6 +37,9 @@ namespace hs {
         LT_KEYWORD_WHILE,
         LT_KEYWORD_DO,
         LT_KEYWORD_INVOKE,
+        LT_KEYWORD_RANGE,
+        LT_KEYWORD_STRUCT,
+        LT_KEYWORD_TYPE,
         LT_ASM_BLOCK
     };
 
@@ -45,12 +48,15 @@ namespace hs {
         { "return"  , LT_KEYWORD_RETURN  },
         { "const"   , LT_KEYWORD_CONST   },
         { "generic" , LT_KEYWORD_GENERIC },
-        { "invoke"  , LT_KEYWORD_INVOKE  },
         { "for"     , LT_KEYWORD_FOR     },
         { "if"      , LT_KEYWORD_IF      },
         { "else"    , LT_KEYWORD_ELSE    },
         { "while"   , LT_KEYWORD_WHILE   },
-        { "do"      , LT_KEYWORD_DO      }
+        { "do"      , LT_KEYWORD_DO      },
+        { "invoke"  , LT_KEYWORD_INVOKE  },
+        { "range"   , LT_KEYWORD_RANGE   },
+        { "struct"  , LT_KEYWORD_STRUCT  },
+        { "type"    , LT_KEYWORD_TYPE    }
     };
 
     std::string lexer_token_type_names[] = {
@@ -86,7 +92,10 @@ namespace hs {
         "LT_KEYWORD_WHILE",
         "LT_KEYWORD_DO",
         "LT_KEYWORD_INVOKE",
-        "LT_ASM_BLOCK",
+        "LT_KEYWORD_RANGE",
+        "LT_KEYWORD_STRUCT",
+        "LT_KEYWORD_TYPE",
+        "LT_ASM_BLOCK"
     };
 
     struct lexer_token_t {
