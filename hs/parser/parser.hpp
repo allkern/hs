@@ -279,7 +279,7 @@ namespace hs {
             bop->offset = m_current.offset;
             bop->len = m_current.text.size();
 
-            bop->bop = m_current.text[0];
+            bop->bop = m_current.text;
 
             m_current = m_input->get();
             

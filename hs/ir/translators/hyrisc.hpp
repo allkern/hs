@@ -3,6 +3,7 @@
 #include "translator.hpp"
 
 #include <sstream>
+#include <unordered_map>
 
 namespace hs {
     class ir_tr_hyrisc_t : public ir_translator_t {
@@ -30,15 +31,43 @@ namespace hs {
             return "r0";
         }
 
-        static std::string map_binary_op(char bop) {
+        enum bop_t {
+            BP_ADD,
+            BP_SUB,
+            BP_MUL,
+            BP_DIV,
+            BP_AND,
+            BP_OR,
+            BP_XOR,
+            BP_SHL,
+            BP_SHR
+        };
+
+        std::unordered_map <std::string, bop_t> m_bop_map = {
+            { "+" , BP_ADD },
+            { "-" , BP_SUB },
+            { "*" , BP_MUL },
+            { "/" , BP_DIV },
+            { "&" , BP_AND },
+            { "|" , BP_OR  },
+            { "^" , BP_XOR },
+            { "<<", BP_SHL },
+            { ">>", BP_SHR }
+        };
+
+        std::string map_binary_op(std::string bop_str) {
+            bop_t bop = m_bop_map[bop_str];
+
             switch (bop) {
-                case '+': return "add.u";
-                case '-': return "sub.u";
-                case '*': return "mul.u";
-                case '/': return "div.u";
-                case '&': return "and";
-                case '|': return "or";
-                case '^': return "xor";
+                case BP_ADD: return "add.u";
+                case BP_SUB: return "sub.u";
+                case BP_MUL: return "mul.u";
+                case BP_DIV: return "div.u";
+                case BP_AND: return "and";
+                case BP_OR : return "or";
+                case BP_XOR: return "xor";
+                case BP_SHL: return "lsl";
+                case BP_SHR: return "lsr";
             }
 
             return "unimplemented_operator";
@@ -105,7 +134,8 @@ namespace hs {
                         } break;
 
                         case IR_ALU: {
-                            ss << map_binary_op(i.args[0][0]) << " " << map_register(i.args[1]) << ", " << map_register(i.args[2]);
+                            _log(debug, "%s", i.args[0].c_str());
+                            ss << map_binary_op(i.args[0]) << " " << map_register(i.args[1]) << ", " << map_register(i.args[2]);
                         } break;
 
                         case IR_CALLR: {

@@ -293,7 +293,7 @@ namespace hs {
                     int lhs = generate_impl(bo->lhs, base + rhs, false, inside_fn);
                     
                     // To-do: Check this
-                    append({IR_ALU, std::string(1, bo->bop), "R" + std::to_string(base + rhs), "R" + std::to_string(base)});
+                    append({IR_ALU, bo->bop, "R" + std::to_string(base + rhs), "R" + std::to_string(base)});
                     append({IR_MOV, "R" + std::to_string(base), "R" + std::to_string(base + rhs)});
 
                     return lhs + rhs;

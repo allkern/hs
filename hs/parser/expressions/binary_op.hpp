@@ -16,7 +16,7 @@ namespace hs {
     };
 
     struct binary_op_t : public expression_t {
-        char bop;
+        std::string bop;
         expression_t* lhs;
         expression_t* rhs;
 
