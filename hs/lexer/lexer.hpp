@@ -19,7 +19,6 @@ namespace hs {
 
         unsigned int m_line = 0, m_offset = 0;
 
-    public:
         enum lex_status_t : int {
             ST_NO_MATCH,
             ST_MATCH,
@@ -39,13 +38,6 @@ namespace hs {
         char m_current;
 
         lexer_token_t m_current_token;
-
-        void init(std::istream* input, error_logger_t* logger) {
-            m_input = input;
-
-            m_current = m_input->get();
-            m_logger = logger;
-        }
 
 #define CONSUME { m_current = m_input->get(); m_offset++; } 
 #define MATCH { ST_MATCH, "" };
@@ -490,18 +482,6 @@ namespace hs {
             }
         }
 
-        lexer_token_t get() {
-            return m_output.get();
-        }
-
-        bool eof() {
-            return m_output.eof();
-        }
-
-        stream_t <lexer_token_t>* get_output() {
-            return &m_output;
-        }
-
 #undef CONSUME
 #undef MATCH
 #undef NO_MATCH
@@ -541,6 +521,26 @@ namespace hs {
             for (auto& token : m_output) {
                 if (fix_keyword(&token)) continue;
             }
+        }
+
+    public:
+        void init(std::istream* input, error_logger_t* logger) {
+            m_input = input;
+
+            m_current = m_input->get();
+            m_logger = logger;
+        }
+
+        lexer_token_t get() {
+            return m_output.get();
+        }
+
+        bool eof() {
+            return m_output.eof();
+        }
+
+        stream_t <lexer_token_t>* get_output() {
+            return &m_output;
         }
 
         void lex() {
