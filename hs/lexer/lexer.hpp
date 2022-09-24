@@ -397,6 +397,66 @@ namespace hs {
                     return MATCH;
                 } break;
 
+                case '<': {
+                    switch (next) {
+                        case '=': {
+                            m_current_token.text = "<=";
+                            m_current_token.line = m_line;
+                            m_current_token.offset = m_offset;
+                            m_current_token.type = LT_OPERATOR_COMP;
+
+                            CONSUME; CONSUME;
+                        } break;
+
+                        case '<': {
+                            m_current_token.text = "<<";
+                            m_current_token.line = m_line;
+                            m_current_token.offset = m_offset;
+                            m_current_token.type = LT_OPERATOR_BINARY;
+
+                            CONSUME; CONSUME;
+                        } break;
+
+                        default: {
+                            SINGLE("<");
+
+                            m_current_token.type = LT_OPERATOR_COMP;
+                        } break;
+                    }
+
+                    return MATCH;
+                } break;
+
+                case '>': {
+                    switch (next) {
+                        case '=': {
+                            m_current_token.text = ">=";
+                            m_current_token.line = m_line;
+                            m_current_token.offset = m_offset;
+                            m_current_token.type = LT_OPERATOR_COMP;
+
+                            CONSUME; CONSUME;
+                        } break;
+
+                        case '>': {
+                            m_current_token.text = ">>";
+                            m_current_token.line = m_line;
+                            m_current_token.offset = m_offset;
+                            m_current_token.type = LT_OPERATOR_BINARY;
+
+                            CONSUME; CONSUME;
+                        } break;
+
+                        default: {
+                            SINGLE("<");
+
+                            m_current_token.type = LT_OPERATOR_COMP;
+                        } break;
+                    }
+
+                    return MATCH;
+                } break;
+
                 case '~': SINGLE('~'); m_current_token.type = LT_OPERATOR_UNARY ; return MATCH;
             }
 
