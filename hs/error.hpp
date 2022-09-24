@@ -40,6 +40,7 @@ namespace hs {
 
             m_filename = filename;
             
+            input->clear();
             input->seekg(0);
         }
 

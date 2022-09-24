@@ -549,6 +549,8 @@ namespace hs {
             while (!m_input->eof()) {
                 ignore_whitespace();
 
+                if (m_input->eof()) break;
+
                 m_current_token.text.clear();
 
                 TRY_LEX(identifier);
