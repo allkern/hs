@@ -26,6 +26,7 @@ namespace hs {
         IR_DEFINE,      // Assembly define
         IR_UNDEF,       // Assembly undef
         IR_DEFSTR,      // Define string
+        IR_DEFV,        // Define value
         IR_PASSTHROUGH, // Passthrough, will emit its first argument verbatim
         IR_NOP          // NOP
     };
@@ -53,6 +54,7 @@ namespace hs {
         "DEFINE",
         "UNDEF",
         "DEFSTR",
+        "DEFV",
         "PASSTHROUGH",
         "NOP"
     };

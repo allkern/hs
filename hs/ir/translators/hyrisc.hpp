@@ -215,6 +215,10 @@ namespace hs {
                             ss << "#undef " << i.args[0];
                         } break;
 
+                        case IR_DEFV: {
+                            ss << ".dl " << fmt_label(i.args[1]);
+                        } break;
+
                         case IR_CMPRI: {
                             ss << "cmp " << map_register(i.args[0]) << ", " << i.args[1];
                         } break;

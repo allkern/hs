@@ -205,6 +205,14 @@ namespace hs {
                     }
                 } break;
 
+                case EX_ARRAY: {
+                    array_t* arr = (array_t*)expr;
+
+                    for (expression_t* expr : arr->values) {
+                        contextualize_impl(expr);
+                    }
+                } break;
+
                 case EX_FUNCTION_CALL: {
                     function_call_t* fc = (function_call_t*)expr;
 

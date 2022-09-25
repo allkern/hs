@@ -1669,6 +1669,10 @@ namespace hs {
             AD_LOAD32,
             AD_ASCII,
             AD_ASCIIZ,
+            AD_DB,
+            AD_DW,
+            AD_DL,
+            AD_DD,
             AD_ELF_TEXT
         };
 
@@ -1676,6 +1680,10 @@ namespace hs {
             { "load32", AD_LOAD32 },
             { "ascii" , AD_ASCII },
             { "asciiz", AD_ASCIIZ },
+            { "db"    , AD_DB },
+            { "dw"    , AD_DW },
+            { "dl"    , AD_DL },
+            { "dd"    , AD_DD },
             { "text", AD_ELF_TEXT }
         };
 
@@ -1836,6 +1844,79 @@ namespace hs {
             }
         }
 
+        void handle_dblwd(char size) {
+            uint32_t value;
+            int offset = 0;
+
+            if (size == 'b') {
+                offset = 1;
+            } else if (size == 'w') {
+                offset = 2;
+            } else if (size == 'l') {
+                offset = 4;
+            } else if (size == 'd') {
+                offset = 8;
+            }
+
+            // Operand is an integer
+            if (std::isdigit(m_current) || m_current == '-' || m_current == '\'') {
+                switch (m_pass) {
+                    case 0: {
+                        value = parse_integer();
+
+                        m_pos += offset;
+                    } break;
+
+                    case 1: {
+                        value = parse_integer();
+
+                        m_output->write((char*)&value, offset);
+                        m_pos += offset;
+                    } break;
+                }
+            } else {
+                // This is a name we have to look up
+                switch (m_pass) {
+                    case 0: {
+                        m_pos += offset;
+                    } break;
+
+                    case 1: {
+                        std::string symbol = parse_name();
+
+                        if (m_local_map.contains(symbol + m_current_function)) {
+                            uint32_t addr = m_local_map[symbol + m_current_function];
+
+                            if (addr < m_pos) {
+                                value = addr - (m_pos + 4);
+                            } else {
+                                value = addr - m_pos;
+                                value -= 4;
+                            }
+
+                            goto found;
+                        }
+
+                        if (m_symbol_map.contains(symbol)) {
+                            value = m_symbol_map[symbol];
+
+                            goto found;
+                        }
+
+                        ERROR(fmt("Symbol \"%s\" not found", symbol.c_str()));
+
+                        return;
+
+                        found:
+
+                        m_output->write((char*)&value, offset);
+
+                        m_pos += offset;
+                    } break;
+                }
+            }
+        }
+
         void handle_directives() {
             // Consume .
             m_current = m_input->get();
@@ -1866,6 +1947,10 @@ namespace hs {
                 case AD_LOAD32: { handle_load32(); } break;
                 case AD_ASCII : { handle_asciiz(false); } break;
                 case AD_ASCIIZ: { handle_asciiz(true); } break;
+                case AD_DB: { handle_dblwd('b'); } break;
+                case AD_DW: { handle_dblwd('w'); } break;
+                case AD_DL: { handle_dblwd('l'); } break;
+                case AD_DD: { handle_dblwd('d'); } break;
             }
 
             consume_until_eol();

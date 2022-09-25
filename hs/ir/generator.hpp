@@ -22,13 +22,15 @@ namespace hs {
             m_prev = m_current;
         
         int m_loops = 0,
-            m_strings = 0;
+            m_strings = 0,
+            m_arrays = 0;
 
         struct string_t {
             std::string name, value;
         };
         
         std::vector <string_t> m_pending_strings;
+        std::vector <array_t> m_pending_arrays;
 
         std::unordered_map <std::string, int> m_local_map;
 
@@ -48,6 +50,12 @@ namespace hs {
             m_pending_strings.push_back(string);
 
             return string.name; 
+        }
+
+        std::string new_array(array_t arr) {
+            m_pending_arrays.push_back(arr);
+
+            return "A" + std::to_string(m_arrays++);
         }
         
         void begin_function() {
@@ -321,6 +329,14 @@ namespace hs {
 
                     return lhs + rhs;
                 } break;
+
+                case EX_ARRAY: {
+                    std::string label = new_array(*((array_t*)expr));
+
+                    append({IR_MOVI, "R" + std::to_string(base), label});
+
+                    return 1;
+                } break;
                 
                 default: return 1;
             }
@@ -348,6 +364,46 @@ namespace hs {
             // just ignore and remove whenever needed
             m_functions.at(0).push_back({IR_PASSTHROUGH, "debug"});
 
+            int i = 0;
+
+            for (array_t& arr : m_pending_arrays) {
+                m_functions.at(m_functions.size() - 1).push_back({IR_LABEL, "A" + std::to_string(i++)});
+                
+                for (expression_t* expr : arr.values) {
+                    switch (expr->get_type()) {
+                        case EX_NUMERIC_LITERAL: {
+                            numeric_literal_t* nl = (numeric_literal_t*)expr;
+
+                            m_functions.at(m_functions.size() - 1).push_back({IR_DEFV, "l", std::to_string(nl->value)});
+                        } break;
+
+                        case EX_STRING_LITERAL: {
+                            string_literal_t* sl = (string_literal_t*)expr;
+
+                            std::string label = new_string(sl->str);
+
+                            m_functions.at(m_functions.size() - 1).push_back({IR_DEFV, "l", label});
+                        } break;
+
+                        case EX_NAME_REF: {
+                            name_ref_t* nr = (name_ref_t*)expr;
+                            
+                            m_functions.at(m_functions.size() - 1).push_back({IR_DEFV, "l", nr->name});
+                        } break;
+
+                        case EX_FUNCTION_DEF: {
+                            function_def_t* fd = (function_def_t*)expr;
+
+                            m_functions.at(m_functions.size() - 1).push_back({IR_DEFV, "l", fd->name});
+                        } break;
+
+                        default: {
+                            _log(error, "Non-compile-time expressions aren't allowed on arrays");
+                        } break;
+                    }
+                }
+            }
+            
             for (string_t& str : m_pending_strings) {
                 m_functions.at(m_functions.size() - 1).push_back({IR_LABEL, str.name});
                 m_functions.at(m_functions.size() - 1).push_back({IR_DEFSTR, str.value});
