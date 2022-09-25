@@ -23,6 +23,7 @@
 #include "expressions/name_ref.hpp"
 #include "expressions/if_else.hpp"
 #include "expressions/invoke.hpp"
+#include "expressions/array.hpp"
 #include "expressions/type.hpp"
 
 #include <cassert>
@@ -302,6 +303,112 @@ namespace hs {
             m_current = m_input->get();
 
             return var;
+        }
+
+        expression_t* parse_array() {
+            array_t* arr = new array_t;
+
+            if (m_current.type != LT_KEYWORD_ARRAY) {
+                assert(false); // ??
+            }
+
+            arr->line = m_current.line;
+            arr->offset = m_current.offset;
+            arr->len = m_current.text.size();
+
+            m_current = m_input->get();
+
+            if (m_current.type != LT_OPENING_BRACKET) {
+                ERROR("Expected [ after array");
+            }
+
+            m_current = m_input->get();
+
+            if (m_current.type != LT_IDENT) {
+                ERROR("Expected type after [");
+            }
+
+            if (!is_type(m_current.text)) {
+                ERROR(fmt("Identifier \"" ESCAPE(37;1) "%s" ESCAPE(0) "\" does not name a type", m_current.text.c_str()));
+            }
+
+            arr->type = type_t();
+            arr->type.type = m_current.text;
+
+            m_current = m_input->get();
+
+            if (m_current.type == LT_COMMA) {
+                m_current = m_input->get();
+
+                if (m_current.type != LT_LITERAL_NUMERIC) {
+                    ERROR("Expected numeric literal after [");
+                }
+
+                if (!std::isdigit(m_current.text[0])) {
+                    // This is a char literal
+                    arr->size = m_current.text[0];
+                } else {
+                    arr->size = std::stoull(m_current.text, nullptr, 0);
+                }
+
+                m_current = m_input->get();
+            }
+
+            if (m_current.type != LT_CLOSING_BRACKET) {
+                ERROR("Expected ] after array type or size");
+            }
+
+            m_current = m_input->get();
+
+            if (m_current.type == LT_OPENING_BRACE) {
+                expression_t* lhs;
+                expression_t* op;
+
+                m_current = m_input->get();
+
+                unsigned int real_size = 0;
+
+                while (m_current.type != LT_CLOSING_BRACE) {
+                    lhs = parse_expression();
+
+                    do {
+                        op = parse_rightside_operation(lhs);
+
+                        if (op) lhs = op;
+                    } while (op);
+
+                    arr->values.push_back(lhs);
+                    real_size++;
+
+                    if (m_current.type == LT_CLOSING_BRACE) break;
+
+                    if (m_current.type != LT_COMMA) {
+                        ERROR("Expressions on arrays must be separated by commas");
+                    }
+
+                    m_current = m_input->get();
+                }
+
+                if (m_current.type == LT_CLOSING_BRACE) {
+                    if ((real_size != arr->size) && (arr->size != 0)) {
+                        if (m_logger) m_logger->print_warning(
+                            "parser",
+                            "Array size doesn't match declared size",
+                            m_current.line, m_current.offset, m_current.text.size(), true
+                        );
+                    }
+
+                    arr->size = real_size;
+                }
+
+                m_current = m_input->get();
+            }
+
+            if (!arr->size) {
+                ERROR("Cannot define zero-sized arrays");
+            }
+
+            return arr;
         }
 
         expression_t* parse_name_ref(std::string name) {
@@ -605,6 +712,10 @@ hs::expression_t* hs::parser_t::parse_expression_impl() {
 
         case LT_KEYWORD_WHILE: {
             expr = parse_while_loop();
+        } break;
+
+        case LT_KEYWORD_ARRAY: {
+            expr = parse_array();
         } break;
 
         case LT_KEYWORD_IF: {

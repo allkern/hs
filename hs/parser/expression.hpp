@@ -27,6 +27,7 @@ namespace hs {
         EX_VARIABLE_DEF,
         EX_ASM_BLOCK,
         EX_WHILE_LOOP,
+        EX_ARRAY,
         EX_IF_ELSE
     };
 

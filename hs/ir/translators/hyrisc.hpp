@@ -134,7 +134,6 @@ namespace hs {
                         } break;
 
                         case IR_ALU: {
-                            _log(debug, "%s", i.args[0].c_str());
                             ss << map_binary_op(i.args[0]) << " " << map_register(i.args[1]) << ", " << map_register(i.args[2]);
                         } break;
 

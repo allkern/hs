@@ -37,6 +37,7 @@ namespace hs {
         LT_KEYWORD_WHILE,
         LT_KEYWORD_DO,
         LT_KEYWORD_INVOKE,
+        LT_KEYWORD_ARRAY,
         LT_KEYWORD_RANGE,
         LT_KEYWORD_STRUCT,
         LT_KEYWORD_TYPE,
@@ -54,6 +55,7 @@ namespace hs {
         { "while"   , LT_KEYWORD_WHILE   },
         { "do"      , LT_KEYWORD_DO      },
         { "invoke"  , LT_KEYWORD_INVOKE  },
+        { "array"   , LT_KEYWORD_ARRAY   },
         { "range"   , LT_KEYWORD_RANGE   },
         { "struct"  , LT_KEYWORD_STRUCT  },
         { "type"    , LT_KEYWORD_TYPE    }
@@ -92,6 +94,7 @@ namespace hs {
         "LT_KEYWORD_WHILE",
         "LT_KEYWORD_DO",
         "LT_KEYWORD_INVOKE",
+        "LT_KEYWORD_ARRAY",
         "LT_KEYWORD_RANGE",
         "LT_KEYWORD_STRUCT",
         "LT_KEYWORD_TYPE",
