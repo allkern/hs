@@ -38,7 +38,29 @@ You could save an anonymous function into a variable, then instantly call it:
 (u32 my_lambda = (fn (i: int) -> char: 'a' + i))(10)
 ```
 
-And much, much more. As you can see, we can condense fairly complex concepts into powerful, yet straightforward snippets, and this is just the beginning!
+And much, much more. As you can see, we can condense fairly complex concepts into powerful, yet straightforward snippets.
+
+# Building
+Building either on Windows or Linux is pretty straightforward, I've included scripts for both systems, but you could totally build just using your favorite compiler.
+
+## Windows
+(This script only works on Powershell)
+```
+git clone https://github.com/lycoder/hs
+cd hs
+./build-win
+```
+
+Take into account this doesn't create a PATH entry, or move/copy the standard library anywhere, you'll have to do these things yourself.
+
+## Ubuntu/Linux
+```
+git clone https://github.com/lycoder/hs
+cd hs
+make clean
+make
+make install
+```
 
 I'll eventually make a nicer README, or a wiki for you to discover more of hs' expressions and operators, for now, this is all I can do. Stay tuned!
 <h3 align="center">Easter egg!</h3>
