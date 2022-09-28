@@ -61,6 +61,7 @@ make clean
 make
 make install
 ```
+This make will build the compiler, copy it to `/usr/bin`, and copy the standard library to `/usr/include`
 
 I'll eventually make a nicer README, or a wiki for you to discover more of hs' expressions and operators, for now, this is all I can do. Stay tuned!
 <h3 align="center">Easter egg!</h3>
