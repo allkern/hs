@@ -4,7 +4,6 @@
 #include <cstdint>
 #include <unordered_map>
 
-
 namespace hs {
     enum hyrisc_operand_mode_t : int {
         OP_RX,      // r0
