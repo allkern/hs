@@ -6,7 +6,7 @@
 #include <unordered_map>
 
 namespace hs {
-    class ir_tr_hyrisc_t : public ir_translator_t {
+    class ir_tr_hv1_t : public ir_translator_t {
         std::vector <std::vector <ir_instruction_t>>* m_ir;
         
         error_logger_t* m_logger;
@@ -116,8 +116,6 @@ namespace hs {
 
             std::ostringstream ss;
 
-            ss << ".text\n";
-
             for (std::vector <ir_instruction_t>& f : *m_ir) {
                 for (ir_instruction_t& i : f) {
                     if (indented) ss << "    ";
@@ -130,39 +128,39 @@ namespace hs {
                         } break;
 
                         case IR_ADDSP: {
-                            ss << "add.u sp, " << i.args[0];
+                            ss << "add.u   sp, " << i.args[0];
                         } break;
 
                         case IR_ALU: {
-                            ss << map_binary_op(i.args[0]) << " " << map_register(i.args[1]) << ", " << map_register(i.args[2]);
+                            ss << map_binary_op(i.args[0]) << "\t" << map_register(i.args[1]) << ", " << map_register(i.args[2]);
                         } break;
 
                         case IR_CALLR: {
-                            ss << "call " << map_register(i.args[0]);
+                            ss << "call    " << map_register(i.args[0]);
                         } break;
 
                         case IR_DECSP: {
-                            ss << "dec.l sp";
+                            ss << "dec.l   sp";
                         } break;
                         
                         case IR_ADDFP: {
-                            ss << "add.u fp, " << i.args[0];
+                            ss << "add.u   fp, " << i.args[0];
                         } break;
 
                         case IR_LEAF: {
-                            ss << "lea.l " << map_register(i.args[0]) << ", [fp-" << i.args[1] << "]";
+                            ss << "lea.l   " << map_register(i.args[0]) << ", [fp-" << i.args[1] << "]";
                         } break;
 
                         case IR_LOADF: {
-                            ss << "load.l " << map_register(i.args[0]) << ", [fp-" << i.args[1] << "]";
+                            ss << "load.l  " << map_register(i.args[0]) << ", [fp-" << i.args[1] << "]";
                         } break;
 
                         case IR_LOADR: {
-                            ss << "load.l " << map_register(i.args[0]) << ", [" << map_register(i.args[1]) << "]";
+                            ss << "load.l  " << map_register(i.args[0]) << ", [" << map_register(i.args[1]) << "]";
                         } break;
 
                         case IR_MOV: {
-                            ss << "mov " << map_register(i.args[0]) << ", " << map_register(i.args[1]); 
+                            ss << "mov     " << map_register(i.args[0]) << ", " << map_register(i.args[1]);
                         } break;
 
                         case IR_MOVI: {
@@ -174,11 +172,11 @@ namespace hs {
                         } break;
 
                         case IR_PUSHR: {
-                            ss << "push " << map_register(i.args[0]);
+                            ss << "push    " << map_register(i.args[0]);
                         } break;
 
                         case IR_POPR: {
-                            ss << "pop " << map_register(i.args[0]);
+                            ss << "pop     " << map_register(i.args[0]);
                         } break;
 
                         case IR_RET: {
@@ -196,11 +194,11 @@ namespace hs {
                         } break;
 
                         case IR_SUBSP: {
-                            ss << "sub.u sp, " << i.args[0];
+                            ss << "sub.u   sp, " << i.args[0];
                         } break;
 
                         case IR_BRANCH: {
-                            ss << map_branch(i.args[0]) << " " << i.args[1];
+                            ss << map_branch(i.args[0]) << std::string(8 - map_branch(i.args[0]).size(), ' ') << i.args[1];
                         } break;
 
                         case IR_DEFSTR: {
@@ -219,9 +217,26 @@ namespace hs {
                             ss << ".dl " << fmt_label(i.args[1]);
                         } break;
 
-                        case IR_CMPRI: {
-                            ss << "cmp " << map_register(i.args[0]) << ", " << i.args[1];
+                        case IR_DEFBLOB: {
+                            ss << ".blob " << i.args[0];
                         } break;
+
+                        case IR_CMPZB: {
+                            ss << "cmp     " << map_register(i.args[1]) << ", " << std::to_string(0) << std::endl;
+                            ss << map_branch(i.args[0]) << std::string(8 - map_branch(i.args[0]).size(), ' ') << i.args[2];
+                        } break;
+
+                        case IR_SECTION: {
+                            ss << ".section " << i.args[0];
+                        };
+
+                        case IR_ORG: {
+                            ss << ".org " << i.args[0];
+                        } break;
+
+                        case IR_ENTRY: {
+                            ss << ".entry " << fmt_label(i.args[0]);
+                        };
                     }
 
                     ss << std::endl;

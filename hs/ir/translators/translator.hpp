@@ -4,6 +4,7 @@
 #include "../generator.hpp"
 
 #include "../../error.hpp"
+#include "../../cli.hpp"
 
 #include <vector>
 

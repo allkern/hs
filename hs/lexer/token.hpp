@@ -41,7 +41,8 @@ namespace hs {
         LT_KEYWORD_RANGE,
         LT_KEYWORD_STRUCT,
         LT_KEYWORD_TYPE,
-        LT_ASM_BLOCK
+        LT_KEYWORD_BLOB,
+        LT_ASM_BLOCK,
     };
 
     std::unordered_map <std::string, lexer_token_type_t> keyword_map = {
@@ -58,6 +59,7 @@ namespace hs {
         { "array"   , LT_KEYWORD_ARRAY   },
         { "range"   , LT_KEYWORD_RANGE   },
         { "struct"  , LT_KEYWORD_STRUCT  },
+        { "blob"    , LT_KEYWORD_BLOB    },
         { "type"    , LT_KEYWORD_TYPE    }
     };
 
@@ -98,6 +100,7 @@ namespace hs {
         "LT_KEYWORD_RANGE",
         "LT_KEYWORD_STRUCT",
         "LT_KEYWORD_TYPE",
+        "LT_KEYWORD_BLOB",
         "LT_ASM_BLOCK"
     };
 

@@ -113,7 +113,6 @@ namespace hs {
     m_current_token.offset = m_offset; \
     CONSUME;
 
-
         result_t try_lex_structural() {
             switch (m_current) {
                 case '{': SINGLE("{"); m_current_token.type = LT_OPENING_BRACE  ; return MATCH;

@@ -36,7 +36,7 @@ namespace hs {
         F_RAW
     };
 
-    class assembler_hyrisc_t : public assembler_t {
+    class assembler_hv1_t : public assembler_t {
         std::istream* m_input;
         std::ostream* m_output;
         char m_current;
@@ -2061,7 +2061,7 @@ namespace hs {
         }
     
     public:
-        void init(std::istream* input, std::ostream* output, error_logger_t* logger) override {
+        void init(std::istream* input, std::ostream* output, error_logger_t* logger, cli_parser_t* cli) override {
             m_input = input;
             m_output = output;
             m_logger = logger;

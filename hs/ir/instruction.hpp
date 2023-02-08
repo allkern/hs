@@ -15,7 +15,7 @@ namespace hs {
         IR_ADDFP,       // Add Immediate to Frame Pointer
         IR_DECSP,       // Decrement Stack Pointer
         IR_CALLR,       // Call register
-        IR_CMPRI,       // Compare register with immediate
+        IR_CMPZB,       // Compare register with 0 and branch
         IR_PUSHR,       // Push register
         IR_POPR,        // Pop register
         IR_LEAF,        // Push register
@@ -27,6 +27,10 @@ namespace hs {
         IR_UNDEF,       // Assembly undef
         IR_DEFSTR,      // Define string
         IR_DEFV,        // Define value
+        IR_DEFBLOB,     // Define blob
+        IR_SECTION,     // Set ELF section
+        IR_ORG,         // Set origin (ELF virtual addresses)
+        IR_ENTRY,       // Set entry point (ELF)
         IR_PASSTHROUGH, // Passthrough, will emit its first argument verbatim
         IR_NOP          // NOP
     };
@@ -43,7 +47,7 @@ namespace hs {
         "ADDFP",
         "DECSP",
         "CALLR",
-        "CMPRI",
+        "CMPZB",
         "PUSHR",
         "POPR",
         "LEAF",
@@ -55,6 +59,10 @@ namespace hs {
         "UNDEF",
         "DEFSTR",
         "DEFV",
+        "DEFBLOB",
+        "SECTION",
+        "ORG",
+        "ENTRY",
         "PASSTHROUGH",
         "NOP"
     };

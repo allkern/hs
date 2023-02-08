@@ -2,6 +2,7 @@
 
 #include "../parser/parser.hpp"
 #include "../error.hpp"
+#include "../cli.hpp"
 #include "instruction.hpp"
 
 #include <stack>
@@ -13,29 +14,38 @@ namespace hs {
     class ir_generator_t {
         parser_output_t* m_po;
         error_logger_t* m_logger;
+        cli_parser_t* m_cli;
 
         std::vector <ir_instruction_t> m_dummy;
 
         std::vector <std::vector <ir_instruction_t>> m_functions;
 
-        int m_current = 0,
-            m_prev = m_current;
+        int m_current_function = 0;
         
-        int m_loops = 0,
-            m_strings = 0,
-            m_arrays = 0;
+        std::stack <int> m_current_loops;
+
+        int m_strings = 0,
+            m_arrays = 0,
+            m_blobs = 0;
 
         struct string_t {
             std::string name, value;
         };
+
+        struct blob_def_t {
+            std::string name, file;
+        };
         
         std::vector <string_t> m_pending_strings;
         std::vector <array_t> m_pending_arrays;
+        std::vector <blob_def_t> m_pending_blobs;
 
-        std::unordered_map <std::string, int> m_local_map;
+        std::unordered_map <std::string, int> m_dummy_local_map;
 
-        int m_num_locals = 0, 
-            m_num_args = 0;
+        std::stack <std::unordered_map <std::string, int>> m_local_maps;
+
+        std::stack <int> m_current_num_locals;
+        std::stack <int> m_current_num_args;
 
         std::string get_variable_name(std::string str) {
             return "arg_" + str.substr(str.find_last_of('.') + 1);
@@ -58,20 +68,32 @@ namespace hs {
             return "A" + std::to_string(m_arrays++);
         }
         
-        void begin_function() {
-            m_prev = m_current;
-            m_current = m_functions.size();
-            m_loops = 0;
+        std::string new_blob(std::string file) {
+            blob_def_t blob_def;
 
+            blob_def.file = file;
+            blob_def.name = "B" + std::to_string(m_blobs++);
+
+            m_pending_blobs.push_back(blob_def);
+
+            return blob_def.name;
+        }
+        
+        void begin_function() {
+            m_current_loops.push(0);
+
+            m_current_function++;
             m_functions.push_back(m_dummy);
         }
 
         void append(ir_instruction_t ins) {
-            m_functions.at(m_current).push_back(ins);
+            m_functions.at(m_current_function).push_back(ins);
         }
 
         void end_function() {
-            m_current = m_prev;
+            m_current_loops.pop();
+
+            m_current_function--;
         }
 
     public:
@@ -79,9 +101,10 @@ namespace hs {
             return &m_functions;
         }
 
-        void init(parser_t* parser, error_logger_t* logger) {
+        void init(parser_t* parser, error_logger_t* logger, cli_parser_t* cli) {
             m_po = parser->get_output();
 
+            m_cli = cli;
             m_logger = logger;
 
             m_functions.resize(1);
@@ -92,13 +115,15 @@ namespace hs {
                 case EX_IF_ELSE: {
                     if_else_t* ie = (if_else_t*)expr;
 
-                    int m_this_loop = m_loops++;
+                    int m_this_loop = m_current_loops.top()++;
 
                     generate_impl(ie->cond, base, false, inside_fn);
 
-                    append({IR_CMPRI, "R" + std::to_string(base), "0"});
-
-                    append({IR_BRANCH, "EQ", (ie->else_expr ? "E" : "L") + std::to_string(m_this_loop)});
+                    append({IR_CMPZB,
+                        "EQ",
+                        "R" + std::to_string(base),
+                        (ie->else_expr ? "E" : "L") + std::to_string(m_this_loop)
+                    });
 
                     generate_impl(ie->if_expr, base, false, inside_fn);
 
@@ -126,16 +151,18 @@ namespace hs {
                 case EX_WHILE_LOOP: {
                     while_loop_t* wl = (while_loop_t*)expr;
 
-                    int m_this_loop = m_loops++;
+                    int m_this_loop = m_current_loops.top()++;
 
                     // To-do: clean this up
                     append({IR_LABEL, "!L" + std::to_string(m_this_loop)});
 
                     generate_impl(wl->condition, base, false, inside_fn);
 
-                    append({IR_CMPRI, "R" + std::to_string(base), "0"});
-
-                    append({IR_BRANCH, "EQ", "E" + std::to_string(m_this_loop)});
+                    append({IR_CMPZB,
+                        "EQ",
+                        "R" + std::to_string(base),
+                        "E" + std::to_string(m_this_loop)
+                    });
 
                     generate_impl(wl->body, base, false, inside_fn);
 
@@ -149,28 +176,33 @@ namespace hs {
 
                     begin_function();
 
+                    m_current_num_locals.push(0);
+                    m_current_num_args.push(0);
+
+                    m_local_maps.push(m_dummy_local_map);
+
                     append({IR_LABEL, fd->name});
 
                     int arg_frame_pos = 1;
 
                     for (function_arg_t& arg : fd->args) {
-                        m_num_args++;
+                        m_current_num_args.top()++;
 
                         append({IR_DEFINE, get_variable_name(arg.name), "[fp-" + std::to_string(4 * (arg_frame_pos++)) + "]"});
 
-                        m_local_map.insert({arg.name, m_num_args * 4});
+                        m_local_maps.top().insert({arg.name, m_current_num_args.top() * 4});
                     }
 
-                    m_num_args++;
+                    m_current_num_args.top()++;
 
-                    m_local_map.insert({"<return_address>", m_num_args * 4});
+                    m_local_maps.top().insert({"<return_address>", m_current_num_args.top() * 4});
 
                     generate_impl(fd->body, base, false, true);
 
                     append({IR_MOV, "A0", "R" + std::to_string(base)});
 
-                    if (m_num_locals) {
-                        append({IR_ADDSP, std::to_string(m_num_locals * 4)});
+                    if (m_current_num_locals.top()) {
+                        append({IR_ADDSP, std::to_string(m_current_num_locals.top() * 4)});
                     }
 
                     for (function_arg_t& arg : fd->args) {
@@ -181,10 +213,10 @@ namespace hs {
 
                     end_function();
 
-                    m_num_locals = 0;
-                    m_num_args = 0;
+                    m_current_num_locals.pop();
+                    m_current_num_args.pop();
 
-                    m_local_map.clear();
+                    m_local_maps.pop();
 
                     append({IR_MOVI, "R" + std::to_string(base), fd->name});
 
@@ -224,9 +256,9 @@ namespace hs {
                     append({IR_MOV, "R" + std::to_string(base), "SP"});
 
                     if (inside_fn) {
-                        m_num_locals++;
+                        m_current_num_locals.top()++;
 
-                        m_local_map.insert({vd->name, (m_num_locals + m_num_args) * 4});
+                        m_local_maps.top().insert({vd->name, (m_current_num_locals.top() + m_current_num_args.top()) * 4});
                     }
 
                     return 1;
@@ -235,18 +267,18 @@ namespace hs {
                 case EX_FUNCTION_CALL: {
                     function_call_t* fc = (function_call_t*)expr;
 
+                    int r = generate_impl(fc->addr, base, true, inside_fn);
+
                     append({IR_PUSHR, "FP"});
 
                     for (expression_t* exp : fc->args) {
-                        generate_impl(exp, base, false, inside_fn);
+                        generate_impl(exp, base + r, false, inside_fn);
 
-                        append({IR_PUSHR, "R" + std::to_string(base)});
+                        append({IR_PUSHR, "R" + std::to_string(base + r)});
                     }
 
                     append({IR_MOV, "FP", "SP"});
                     append({IR_ADDFP, std::to_string(fc->args.size() * 4)});
-
-                    generate_impl(fc->addr, base, true, inside_fn);
 
                     append({IR_CALLR, "R" + std::to_string(base)});
                     append({IR_MOV, "R" + std::to_string(base), "A0"});
@@ -268,17 +300,17 @@ namespace hs {
                 case EX_NAME_REF: {
                     name_ref_t* nr = (name_ref_t*)expr;
 
-                    bool local = m_local_map.contains(nr->name);
+                    bool local = m_local_maps.top().contains(nr->name);
 
                     if (local) {
                         if (!pointer) {
                             // If referring by value, then load the value from
                             // stack
 
-                            append({IR_LOADF, "R" + std::to_string(base), std::to_string(m_local_map[nr->name])});
+                            append({IR_LOADF, "R" + std::to_string(base), std::to_string(m_local_maps.top()[nr->name])});
                         } else {
                             // Else, load the address in stack 
-                            append({IR_LEAF, "R" + std::to_string(base), std::to_string(m_local_map[nr->name])});
+                            append({IR_LEAF, "R" + std::to_string(base), std::to_string(m_local_maps.top()[nr->name])});
                         }
                     } else {
                         // If its a global variable, then load it's address
@@ -310,13 +342,29 @@ namespace hs {
                 case EX_ARRAY_ACCESS: {
                     array_access_t* aa = (array_access_t*)expr;
 
-                    int addr = generate_impl(aa->addr, base, false, inside_fn);
+                    if (aa->type_or_name->get_type() != EX_TYPE) {
+                        binary_op_t* bo = new binary_op_t;
 
-                    if (!pointer) { 
-                        append({IR_LOADR, "R" + std::to_string(base), "R" + std::to_string(base)});
+                        bo->lhs = aa->addr;
+                        bo->rhs = aa->type_or_name;
+                        bo->bop = "+";
+
+                        int a = generate_impl(bo, base, false, inside_fn);
+
+                        //if (!pointer) { 
+                            append({IR_LOADR, "R" + std::to_string(base), "R" + std::to_string(base)});
+                        //}
+
+                        return a;
+                    } else {
+                        int addr = generate_impl(aa->addr, base, false, inside_fn);
+
+                        if (!pointer) { 
+                            append({IR_LOADR, "R" + std::to_string(base), "R" + std::to_string(base)});
+                        }
+
+                        return addr;
                     }
-
-                    return addr;
                 } break;
 
                 case EX_ASSIGNMENT: {
@@ -337,6 +385,16 @@ namespace hs {
 
                     return 1;
                 } break;
+
+                case EX_BLOB: {
+                    blob_t* blob = (blob_t*)expr;
+
+                    std::string label = new_blob(blob->file);
+
+                    append({IR_MOVI, "R" + std::to_string(base), label});
+
+                    return 1;
+                } break;
                 
                 default: return 1;
             }
@@ -345,6 +403,13 @@ namespace hs {
         }
 
         void generate() {
+            if (m_cli->get_setting(ST_OUTPUT_FORMAT) == "elf32") {
+                m_functions.at(0).push_back({IR_ENTRY, "<ENTRY>"});
+
+                m_functions.at(0).push_back({IR_ORG, "0x40000"});
+                m_functions.at(0).push_back({IR_SECTION, ".text"});
+            }
+
             m_functions.at(0).push_back({IR_LABEL, "<ENTRY>"});
 
             for (expression_t* expr : m_po->source) {
@@ -362,9 +427,13 @@ namespace hs {
 
             // This will only work with Hyrisc for now.
             // just ignore and remove whenever needed
-            m_functions.at(0).push_back({IR_PASSTHROUGH, "debug"});
+            m_functions.at(0).push_back({IR_PASSTHROUGH, "debug 0x0"});
 
             int i = 0;
+
+            if (m_cli->get_setting(ST_OUTPUT_FORMAT) == "elf32") {
+                m_functions.at(0).push_back({IR_SECTION, ".rodata"});
+            }
 
             for (array_t& arr : m_pending_arrays) {
                 m_functions.at(m_functions.size() - 1).push_back({IR_LABEL, "A" + std::to_string(i++)});
@@ -407,6 +476,11 @@ namespace hs {
             for (string_t& str : m_pending_strings) {
                 m_functions.at(m_functions.size() - 1).push_back({IR_LABEL, str.name});
                 m_functions.at(m_functions.size() - 1).push_back({IR_DEFSTR, str.value});
+            }
+            
+            for (blob_def_t& blob : m_pending_blobs) {
+                m_functions.at(m_functions.size() - 1).push_back({IR_LABEL, blob.name});
+                m_functions.at(m_functions.size() - 1).push_back({IR_DEFBLOB, blob.file});
             }
         }
     };

@@ -28,6 +28,7 @@ namespace hs {
         EX_ASM_BLOCK,
         EX_WHILE_LOOP,
         EX_ARRAY,
+        EX_BLOB,
         EX_IF_ELSE
     };
 

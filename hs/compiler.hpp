@@ -20,10 +20,14 @@
 #include "cli.hpp"
 
 // IR Translators
-#include "ir/translators/hyrisc.hpp"
+#include "ir/translators/hv1.hpp"
+#include "ir/translators/hv2.hpp"
+#include "ir/translators/x86_64.hpp"
 
 // Assemblers
-#include "assembler/hyrisc/assembler.hpp"
+#include "assembler/hv1/assembler.hpp"
+#include "assembler/hv2/assembler.hpp"
+#include "assembler/x86_64/assembler.hpp"
 
 #ifndef OS_VERSION
 #define OS_VERSION "unknown"
@@ -95,10 +99,11 @@ namespace hs {
         "without spaces between each argument. e.g. -I inc,inc2,inc3\n"
         "\n"
         "For bug reporting please file an issue on:\n"
-        "https://github.com/lycoder/hs/issues";
+        "https://github.com/allkern/hs/issues";
     
     enum target_arch_t {
-        TGT_ARCH_HYRISC,
+        TGT_ARCH_HV1,
+        TGT_ARCH_HV2,
         TGT_ARCH_X86,
         TGT_ARCH_X64,
         TGT_ARCH_ARM,
@@ -110,24 +115,30 @@ namespace hs {
     };
 
     std::unordered_map <std::string, target_arch_t> m_target_arch_map = {
-          { "hyrisc" , TGT_ARCH_HYRISC    },
-          { "x86"    , TGT_ARCH_X86       },
-          { "x86-32" , TGT_ARCH_X86       },
-          { "x86_32" , TGT_ARCH_X86       },
-          { "x64"    , TGT_ARCH_X64       },
-          { "x86-64" , TGT_ARCH_X64       },
-          { "x86_64" , TGT_ARCH_X64       },
-          { "amd64"  , TGT_ARCH_X64       },
-          { "arm"    , TGT_ARCH_ARM       },
-          { "thumb"  , TGT_ARCH_ARM_THUMB },
-          { "aarch64", TGT_ARCH_AARCH64   },
-          { "mips"   , TGT_ARCH_MIPS      },
-          { "riscv"  , TGT_ARCH_RV32      },
-          { "riscv32", TGT_ARCH_RV32      },
-          { "riscv64", TGT_ARCH_RV64      },
-          { "rv"     , TGT_ARCH_RV32      },
-          { "rv32"   , TGT_ARCH_RV32      },
-          { "rv64"   , TGT_ARCH_RV64      }
+          { "hyrisc"  , TGT_ARCH_HV1       },
+          { "hyrisc1" , TGT_ARCH_HV1       },
+          { "hyriscv1", TGT_ARCH_HV1       },
+          { "hv1"     , TGT_ARCH_HV1       },
+          { "hyrisc2" , TGT_ARCH_HV2       },
+          { "hyriscv2", TGT_ARCH_HV2       },
+          { "hv2"     , TGT_ARCH_HV2       },
+          { "x86"     , TGT_ARCH_X86       },
+          { "x86-32"  , TGT_ARCH_X86       },
+          { "x86_32"  , TGT_ARCH_X86       },
+          { "x64"     , TGT_ARCH_X64       },
+          { "x86-64"  , TGT_ARCH_X64       },
+          { "x86_64"  , TGT_ARCH_X64       },
+          { "amd64"   , TGT_ARCH_X64       },
+          { "arm"     , TGT_ARCH_ARM       },
+          { "thumb"   , TGT_ARCH_ARM_THUMB },
+          { "aarch64" , TGT_ARCH_AARCH64   },
+          { "mips"    , TGT_ARCH_MIPS      },
+          { "riscv"   , TGT_ARCH_RV32      },
+          { "riscv32" , TGT_ARCH_RV32      },
+          { "riscv64" , TGT_ARCH_RV64      },
+          { "rv"      , TGT_ARCH_RV32      },
+          { "rv32"    , TGT_ARCH_RV32      },
+          { "rv64"    , TGT_ARCH_RV64      }
     };
 
     class compiler_t {
@@ -167,9 +178,19 @@ namespace hs {
 
         void load_target_specific_code(target_arch_t tgt) {
             switch (tgt) {
-                case TGT_ARCH_HYRISC: {
-                    m_translator = new ir_tr_hyrisc_t;
-                    m_assembler = new assembler_hyrisc_t;
+                case TGT_ARCH_HV1: {
+                    m_translator = new ir_tr_hv1_t;
+                    m_assembler = new assembler_hv1_t;
+                } break;
+
+                case TGT_ARCH_HV2: {
+                    m_translator = new ir_tr_hv2_t;
+                    m_assembler = new assembler_hv2_t;
+                } break;
+
+                case TGT_ARCH_X86: case TGT_ARCH_X64: {
+                    m_translator = new ir_tr_x86_64_t;
+                    m_assembler = new assembler_x86_64_t;
                 } break;
 
                 // We don't support other architectures yet
@@ -223,7 +244,7 @@ namespace hs {
 
                 load_target_specific_code(m_target_arch_map[m_cli.get_setting(ST_TARGET_ARCH)]);
             } else {
-                load_target_specific_code(TGT_ARCH_HYRISC);
+                load_target_specific_code(TGT_ARCH_HV2);
             }
 
             if (!m_translator) {
@@ -312,7 +333,7 @@ namespace hs {
                 m_aspp.init(m_input, &m_include_paths, m_system_include, &m_logger);
                 m_aspp.preprocess();
 
-                m_assembler->init(m_aspp.get_output(), m_output, &m_logger);
+                m_assembler->init(m_aspp.get_output(), m_output, &m_logger, &m_cli);
                 m_assembler->assemble();
 
                 return true;
@@ -348,24 +369,37 @@ namespace hs {
                 }
             }
 
-            m_irg.init(&m_parser, &m_logger);
+            m_irg.init(&m_parser, &m_logger, &m_cli);
             m_irg.generate();
 
             if (m_cli.get_switch(SW_DEBUG_IR_OUTPUT) || m_cli.get_switch(SW_DEBUG_ALL)) {
-                _log(debug, "\nIR Generator output:");
+                _log(debug, "IR Generator output:");
                 // To-do
-                // std::vector <std::vector <ir_instruction_t>>* funcs = m_irg.get_functions();
+                std::vector <std::vector <ir_instruction_t>>* functions = m_irg.get_functions();
 
-                // for (std::vector <ir_instruction_t>* fn : *funcs) {
+                for (int i = 0; i < functions->size(); i++) {
+                    std::vector <ir_instruction_t>* function = &functions->at(i);
 
-                // }
+                    for (int j = 0; j < function->size(); j++) {
+                        ir_instruction_t* instruction = &function->at(j);
+
+                        std::cout << m_ir_mnemonic_map[instruction->opcode] << " ";
+
+                        if (instruction->args[0].size()) std::cout << '\t' << instruction->args[0];
+                        if (instruction->args[1].size()) std::cout << ", " << instruction->args[1];
+                        if (instruction->args[2].size()) std::cout << ", " << instruction->args[2];
+                        if (instruction->args[3].size()) std::cout << ", " << instruction->args[3];
+                        
+                        std::cout << std::endl;
+                    }
+                }
             }
 
             m_translator->init(&m_irg, &m_logger);
             std::string assembly = m_translator->translate();
 
             if (m_cli.get_switch(SW_DEBUG_IRT_OUTPUT) || m_cli.get_switch(SW_DEBUG_ALL)) {
-                _log(debug, "\nIR Translator output:");
+                _log(debug, "IR Translator output:");
 
                 std::cout << assembly;
             }
@@ -375,7 +409,7 @@ namespace hs {
             m_aspp.init(&assembly_stream, &m_include_paths, m_system_include, &m_logger);
             m_aspp.preprocess();
 
-            m_assembler->init(m_aspp.get_output(), m_output, &m_logger);
+            m_assembler->init(m_aspp.get_output(), m_output, &m_logger, &m_cli);
             m_assembler->assemble();
 
             if (m_cli.get_switch(SW_PRINT_SUCCESS)) {

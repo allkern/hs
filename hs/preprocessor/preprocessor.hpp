@@ -109,7 +109,7 @@ namespace hs {
                 // Include wasn't found on any of the paths
                 if (m_logger) m_logger->print_error(
                     "preprocessor",
-                    fmt("File \"%s\" for include wasn't found", filename.c_str()), 0, 0, false
+                    fmt("File \"%s\" for #include wasn't found", filename.c_str()), 0, 0, false
                 );
 
                 return false;

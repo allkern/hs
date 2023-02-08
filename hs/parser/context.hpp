@@ -22,8 +22,10 @@ namespace hs {
         std::stack <std::string> m_scope;
         error_logger_t* m_logger;
 
+        std::vector <std::string> m_dummy;
+
         std::vector <std::string> m_vars_in_global_scope;
-        std::vector <std::string> m_vars_in_current_scope;
+        std::stack <std::vector <std::string>> m_vars_in_current_scope;
 
         void init(parser_t* parser, error_logger_t* logger) {
             m_po = parser->get_output();
@@ -78,13 +80,15 @@ namespace hs {
                                 fd
                             );
 
-                        m_vars_in_current_scope.push_back(fd->name);
+                        m_vars_in_current_scope.top().push_back(fd->name);
                     }
 
                     fd->name = m_scope.top() + "." + fd->name;
 
+                    m_vars_in_current_scope.push(m_dummy);
+
                     for (function_arg_t& arg : fd->args) {
-                        m_vars_in_current_scope.push_back(arg.name);
+                        m_vars_in_current_scope.top().push_back(arg.name);
 
                         arg.name = fd->name + "." + arg.name;
                     }
@@ -93,7 +97,7 @@ namespace hs {
 
                     contextualize_impl(fd->body);
 
-                    m_vars_in_current_scope.clear();
+                    m_vars_in_current_scope.pop();
                     m_scope.pop();
                 } break;
 
@@ -118,7 +122,7 @@ namespace hs {
                                 vd
                             );
 
-                        m_vars_in_current_scope.push_back(vd->name);
+                        m_vars_in_current_scope.top().push_back(vd->name);
                     }
 
                     vd->name = m_scope.top() + "." + vd->name;
@@ -128,12 +132,12 @@ namespace hs {
                     name_ref_t* nr = (name_ref_t*)expr;
 
                     auto current = std::find(
-                        std::begin(m_vars_in_current_scope),
-                        std::end(m_vars_in_current_scope),
+                        std::begin(m_vars_in_current_scope.top()),
+                        std::end(m_vars_in_current_scope.top()),
                         nr->name
                     );
 
-                    bool found_in_current_scope = current != std::end(m_vars_in_current_scope);
+                    bool found_in_current_scope = current != std::end(m_vars_in_current_scope.top());
 
                     if (found_in_current_scope) {
                         nr->name = m_scope.top() + "." + nr->name;
@@ -244,6 +248,10 @@ namespace hs {
 
                     if (ie->else_expr)
                         contextualize_impl(ie->else_expr);
+                } break;
+
+                case EX_BLOB: {
+
                 } break;
 
                 case EX_NUMERIC_LITERAL: {

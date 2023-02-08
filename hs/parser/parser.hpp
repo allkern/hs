@@ -25,6 +25,7 @@
 #include "expressions/invoke.hpp"
 #include "expressions/array.hpp"
 #include "expressions/type.hpp"
+#include "expressions/blob.hpp"
 
 #include <cassert>
 
@@ -303,6 +304,30 @@ namespace hs {
             m_current = m_input->get();
 
             return var;
+        }
+
+        expression_t* parse_blob() {
+            blob_t* blob = new blob_t;
+
+            if (m_current.type != LT_KEYWORD_BLOB) {
+                assert(false); // ??
+            }
+
+            blob->line = m_current.line;
+            blob->offset = m_current.offset;
+            blob->len = m_current.text.size();
+
+            m_current = m_input->get();
+
+            if (m_current.type != LT_LITERAL_STRING) {
+                ERROR("Expected string literal after blob");
+            }
+
+            blob->file = m_current.text;
+
+            m_current = m_input->get();
+
+            return blob;
         }
 
         expression_t* parse_array() {
@@ -716,6 +741,10 @@ hs::expression_t* hs::parser_t::parse_expression_impl() {
 
         case LT_KEYWORD_ARRAY: {
             expr = parse_array();
+        } break;
+
+        case LT_KEYWORD_BLOB: {
+            expr = parse_blob();
         } break;
 
         case LT_KEYWORD_IF: {
