@@ -233,15 +233,15 @@ namespace hs {
                         
                         case IR_SECTION: {
                             ss << ".section " << i.args[0];
-                        };
+                        } break;
 
                         case IR_ORG: {
                             ss << ".org " << i.args[0];
                         } break;
 
                         case IR_ENTRY: {
-                            ss << ".entry " << fmt_label(i.args[0]);
-                        };
+                            ss << ".entry !" << fmt_label(i.args[0]);
+                        } break;
                     }
 
                     ss << std::endl;
