@@ -161,6 +161,9 @@ struct hv2a_t {
     std::unordered_map <std::string, uint32_t> local_symbols;
     std::string current_symbol = "none";
 
+    bool flush = false;
+    unsigned pipeline_size = 3;
+
     uint32_t output_format;
 
     // Parser
@@ -311,6 +314,7 @@ std::unordered_map <std::string, mnemonic_data_t> mnemonic_data_map = {
 #define PSD_PUSH    14
 #define PSD_POP     15
 #define PSD_BI      16
+#define PSD_XCH     17
 
 std::unordered_map <std::string, mnemonic_data_t> pseudo_data_map = {
     // Branch always
@@ -353,7 +357,10 @@ std::unordered_map <std::string, mnemonic_data_t> pseudo_data_map = {
     { "blt.i" , PSD2(PSD_BI, 0, 5) }, { "ble.i" , PSD2(PSD_BI, 0, 6) },
     { "bleq.i", PSD2(PSD_BI, 1, 1) }, { "blne.i", PSD2(PSD_BI, 1, 2) },
     { "blgt.i", PSD2(PSD_BI, 1, 3) }, { "blge.i", PSD2(PSD_BI, 1, 4) },
-    { "bllt.i", PSD2(PSD_BI, 1, 5) }, { "blle.i", PSD2(PSD_BI, 1, 6) }
+    { "bllt.i", PSD2(PSD_BI, 1, 5) }, { "blle.i", PSD2(PSD_BI, 1, 6) },
+
+    // Exchange registers
+    { "xch", PSD0(PSD_XCH) }
 };
 
 #undef ALU
@@ -400,6 +407,13 @@ std::string operand_mode_name[] = {
 // Operand types
 #define OPR_INT   0
 #define OPR_IDX   1
+
+inline uint32_t hv2a_get_pipeline_offset(hv2a_t* as) {
+    if (as->flush)
+        return 0;
+    
+    return as->pipeline_size * 4;
+}
 
 inline void hv2a_consume_whitespace(hv2a_t* as) {
     while (std::isblank(as->c))
@@ -614,7 +628,7 @@ uint32_t hv2a_parse_integer(hv2a_t* as, int* type = nullptr) {
 
             if (type) *type = INT_TYPE_REGISTER;
 
-            // This is VERY LIKELY useless
+            // This is likely VERY useless
             return negative ? -rn : rn;
         }
 
@@ -626,8 +640,9 @@ uint32_t hv2a_parse_integer(hv2a_t* as, int* type = nullptr) {
 
         if (type) *type = INT_TYPE_SYMBOL;
 
+        // Account for different pipeline sizes
         // Ignore negative marker
-        return absolute ? sym.value : (sym.value - (as->vaddr + 4));
+        return absolute ? sym.value : (sym.value - (as->vaddr + hv2a_get_pipeline_offset(as)));
     }
 
     return negative ? -v : v;
@@ -1437,6 +1452,7 @@ void hv2a_encode_pseudo_op(hv2a_t* as, mnemonic_data_t* md, operand_data_t* od) 
         case PSD_CALLR: {
             PUSH("sub.u     sp, 4");
             PUSH("store.l   [sp], pc");
+            PUSH("nop       r0");
             PUSH("move      pc, %u", od->integer[0]);
         } break;
 
@@ -1488,7 +1504,9 @@ void hv2a_encode_pseudo_op(hv2a_t* as, mnemonic_data_t* md, operand_data_t* od) 
 
         case PSD_RET: {
             PUSH("add.u     sp, 4");
-            PUSH("load.l    pc, [sp-4]");
+            PUSH("load.l    at, [sp-4]");
+            PUSH("add.u     at, %u", hv2a_get_pipeline_offset(as));
+            PUSH("move      pc, at");
         } break;
 
         case PSD_SWAP: {
@@ -1508,6 +1526,13 @@ void hv2a_encode_pseudo_op(hv2a_t* as, mnemonic_data_t* md, operand_data_t* od) 
         case PSD_BI: {
             /* To-do */
         };
+
+        // Use XOR swap
+        case PSD_XCH: {
+            PUSH("xor.u %u, %u, %u", od->integer[0], od->integer[0], od->integer[1]);
+            PUSH("xor.u %u, %u, %u", od->integer[1], od->integer[1], od->integer[0]);
+            PUSH("xor.u %u, %u, %u", od->integer[0], od->integer[0], od->integer[1]);
+        } break;
     }
 }
 
@@ -1815,17 +1840,73 @@ namespace hs {
         cli_parser_t* m_cli;
         hv2a_t* m_assembler;
 
+        int pipeline_size = 3;
+        bool pipeline_flush = false;
+
     public:
         ~assembler_hv2_t() {
             delete(m_assembler);
         }
 
         void init(std::istream* input, std::ostream* output, error_logger_t* logger, cli_parser_t* cli) override {
+            _hv2_log::init("hv2_assembler");
+
             m_input = input;
             m_output = output;
             m_logger = logger;
             m_cli = cli;
             m_assembler = new hv2a_t;
+
+            std::string opt = m_cli->get_setting(ST_XASM);
+
+            // Parse options
+            if (opt.size()) {
+                std::stringstream stream(opt);
+
+                std::vector <std::string> options;
+                std::string buf;
+
+                char c = stream.get();
+
+                while (!stream.eof()) {
+                    if (c == ',') {
+                        if (buf.size()) {
+                            options.push_back(buf);
+
+                            buf.clear();
+                        }
+
+                        c = stream.get();
+                    }
+
+                    buf.push_back(c);
+
+                    c = stream.get();
+                }
+
+                if (buf.size()) {
+                    options.push_back(buf);
+                }
+
+                for (std::string& o : options) {
+                    switch (o[1]) {
+                        case 'P': {
+                            pipeline_size = std::stoi(&o[2]);
+                        } break;
+
+                        case 'f': case 'F': {
+                            pipeline_flush = o[1] == 'F';
+                        } break;
+
+                        default: {
+                            _hv2_log(warning, "Unknown assembler setting \'%c\'", o[1]);
+                        };
+                    }
+                }
+            }
+
+            m_assembler->pipeline_size = pipeline_size;
+            m_assembler->flush = pipeline_flush;
         }
 
         void assemble() override {

@@ -44,6 +44,7 @@ namespace hs {
         ST_TARGET_ARCH,
         ST_SYSTEM_INCLUDE,
         ST_XLAT,
+        ST_XASM,
         ST_HELP_TARGET
     };
 
@@ -73,10 +74,10 @@ namespace hs {
             WSHORTHAND("-S", "--output-symbols"      , SW_OUTPUT_SYMBOLS     ),
             LONG_ONLY (      "--help"                , SW_HELP               ),
             LONG_ONLY (      "--only-symbols"        , SW_ONLY_SYMBOLS       ),
-            LONG_ONLY (      "--debug-lexer-output"  , SW_DEBUG_LEXER_OUTPUT ),
-            LONG_ONLY (      "--debug-parser-output" , SW_DEBUG_PARSER_OUTPUT),
-            LONG_ONLY (      "--debug-ir-output"     , SW_DEBUG_IR_OUTPUT    ),
-            LONG_ONLY (      "--debug-irt-output"    , SW_DEBUG_IRT_OUTPUT   ),
+            LONG_ONLY (      "--debug-lexer"         , SW_DEBUG_LEXER_OUTPUT ),
+            LONG_ONLY (      "--debug-parser"        , SW_DEBUG_PARSER_OUTPUT),
+            LONG_ONLY (      "--debug-ir"            , SW_DEBUG_IR_OUTPUT    ),
+            LONG_ONLY (      "--debug-irt"           , SW_DEBUG_IRT_OUTPUT   ),
             LONG_ONLY (      "--debug-all"           , SW_DEBUG_ALL          ),
             LONG_ONLY (      "--stdin"               , SW_STDIN              ),
             LONG_ONLY (      "--stdout"              , SW_STDOUT             ),
@@ -91,6 +92,7 @@ namespace hs {
             WSHORTHAND("-F", "--output-format"       , ST_OUTPUT_FORMAT      ),
             WSHORTHAND("-T", "--target-arch"         , ST_TARGET_ARCH        ),
             LONG_ONLY (      "--Xlat"                , ST_XLAT               ),
+            LONG_ONLY (      "--Xasm"                , ST_XASM               ),
             LONG_ONLY (      "--system-include"      , ST_SYSTEM_INCLUDE     ),
             LONG_ONLY (      "--help-target"         , ST_HELP_TARGET        )
         };
