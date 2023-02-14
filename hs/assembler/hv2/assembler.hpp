@@ -412,7 +412,7 @@ inline uint32_t hv2a_get_pipeline_offset(hv2a_t* as) {
     if (as->flush)
         return 0;
     
-    return as->pipeline_size * 4;
+    return (as->pipeline_size - 1) * 4;
 }
 
 inline void hv2a_consume_whitespace(hv2a_t* as) {
@@ -642,7 +642,8 @@ uint32_t hv2a_parse_integer(hv2a_t* as, int* type = nullptr) {
 
         // Account for different pipeline sizes
         // Ignore negative marker
-        return absolute ? sym.value : (sym.value - (as->vaddr + hv2a_get_pipeline_offset(as)));
+
+        return absolute ? sym.value : (sym.value - (as->vaddr + (4 + hv2a_get_pipeline_offset(as))));
     }
 
     return negative ? -v : v;
@@ -836,6 +837,8 @@ uint32_t encode_instruction(mnemonic_data_t* md, operand_data_t* od, size_t* siz
             opcode |= (od->integer[2] & 0xffff) << 1;
             opcode |= (od->integer[2] & 0x10000) << 15;
             opcode |= md->brn_link;
+
+            _log(debug, "imm=%08x", od->integer[2]);
         } break;
 
         case IT_BRR: {
@@ -1013,8 +1016,8 @@ void hv2a_handle_org(hv2a_t* as) {
         ERROR(0 /* To-do */, "Symbols not allowed for use with .org");
     }
 
+
     as->vaddr = new_pos;
-    //as->pos = new_pos;
 
     return;
 }
@@ -1505,7 +1508,7 @@ void hv2a_encode_pseudo_op(hv2a_t* as, mnemonic_data_t* md, operand_data_t* od) 
         case PSD_RET: {
             PUSH("add.u     sp, 4");
             PUSH("load.l    at, [sp-4]");
-            PUSH("add.u     at, %u", hv2a_get_pipeline_offset(as));
+            PUSH("add.u     at, %u", hv2a_get_pipeline_offset(as) + 4);
             PUSH("move      pc, at");
         } break;
 

@@ -32,7 +32,8 @@ namespace hs {
         IR_ORG,         // Set origin (ELF virtual addresses)
         IR_ENTRY,       // Set entry point (ELF)
         IR_PASSTHROUGH, // Passthrough, will emit its first argument verbatim
-        IR_NOP          // NOP
+        IR_NOP,         // NOP
+        IR_DEBUG        // NOP
     };
 
     std::string m_ir_mnemonic_map[] = {
@@ -64,7 +65,8 @@ namespace hs {
         "ORG",
         "ENTRY",
         "PASSTHROUGH",
-        "NOP"
+        "NOP",
+        "DEBUG"
     };
 
     struct ir_instruction_t {

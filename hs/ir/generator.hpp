@@ -404,46 +404,50 @@ namespace hs {
 
         void generate() {
             if (m_cli->get_setting(ST_OUTPUT_FORMAT) == "elf32") {
-                m_functions.at(0).push_back({IR_ENTRY, "<ENTRY>"});
+                m_functions.front().push_back({IR_ENTRY, "<ENTRY>"});
 
-                m_functions.at(0).push_back({IR_ORG, "0x40000"});
-                m_functions.at(0).push_back({IR_SECTION, ".text"});
+                m_functions.front().push_back({IR_ORG, "0x40000"});
+                m_functions.front().push_back({IR_SECTION, ".text"});
             }
 
-            m_functions.at(0).push_back({IR_LABEL, "<ENTRY>"});
+            m_functions.front().push_back({IR_LABEL, "<ENTRY>"});
 
             for (expression_t* expr : m_po->source) {
                 generate_impl(expr, 0);
             }
             
             // Function call semantics
-            m_functions.at(0).push_back({IR_PUSHR, "FP"});
-            m_functions.at(0).push_back({IR_MOV, "FP", "SP"});
-            m_functions.at(0).push_back({IR_MOVI, "R0", "<global>.main"});
-            m_functions.at(0).push_back({IR_CALLR, "R0"});
-            m_functions.at(0).push_back({IR_MOV, "R0", "A0"});
-            m_functions.at(0).push_back({IR_MOV, "SP", "FP"});
-            m_functions.at(0).push_back({IR_POPR, "FP"});
+            m_functions.front().push_back({IR_PUSHR, "FP"});
+            m_functions.front().push_back({IR_MOV, "FP", "SP"});
+            m_functions.front().push_back({IR_MOVI, "R0", "<global>.main"});
+            m_functions.front().push_back({IR_CALLR, "R0"});
+            m_functions.front().push_back({IR_MOV, "R0", "A0"});
+            m_functions.front().push_back({IR_MOV, "SP", "FP"});
+            m_functions.front().push_back({IR_POPR, "FP"});
 
-            // This will only work with Hyrisc for now.
-            // just ignore and remove whenever needed
-            m_functions.at(0).push_back({IR_PASSTHROUGH, "debug 0x0"});
+            // Debug program end software breakpoint
+            m_functions.front().push_back({IR_DEBUG, "0xdeadc0de"});
+
+            // Section padding
+            m_functions.back().push_back({IR_NOP});
+            m_functions.back().push_back({IR_NOP});
 
             int i = 0;
 
             if (m_cli->get_setting(ST_OUTPUT_FORMAT) == "elf32") {
-                m_functions.at(0).push_back({IR_SECTION, ".rodata"});
+                m_functions.back().push_back({IR_SECTION, ".rodata"});
             }
 
+
             for (array_t& arr : m_pending_arrays) {
-                m_functions.at(m_functions.size() - 1).push_back({IR_LABEL, "A" + std::to_string(i++)});
+                m_functions.back().push_back({IR_LABEL, "A" + std::to_string(i++)});
                 
                 for (expression_t* expr : arr.values) {
                     switch (expr->get_type()) {
                         case EX_NUMERIC_LITERAL: {
                             numeric_literal_t* nl = (numeric_literal_t*)expr;
 
-                            m_functions.at(m_functions.size() - 1).push_back({IR_DEFV, "l", std::to_string(nl->value)});
+                            m_functions.back().push_back({IR_DEFV, "l", std::to_string(nl->value)});
                         } break;
 
                         case EX_STRING_LITERAL: {
@@ -451,19 +455,19 @@ namespace hs {
 
                             std::string label = new_string(sl->str);
 
-                            m_functions.at(m_functions.size() - 1).push_back({IR_DEFV, "l", label});
+                            m_functions.back().push_back({IR_DEFV, "l", label});
                         } break;
 
                         case EX_NAME_REF: {
                             name_ref_t* nr = (name_ref_t*)expr;
                             
-                            m_functions.at(m_functions.size() - 1).push_back({IR_DEFV, "l", nr->name});
+                            m_functions.back().push_back({IR_DEFV, "l", nr->name});
                         } break;
 
                         case EX_FUNCTION_DEF: {
                             function_def_t* fd = (function_def_t*)expr;
 
-                            m_functions.at(m_functions.size() - 1).push_back({IR_DEFV, "l", fd->name});
+                            m_functions.back().push_back({IR_DEFV, "l", fd->name});
                         } break;
 
                         default: {
@@ -474,13 +478,13 @@ namespace hs {
             }
             
             for (string_t& str : m_pending_strings) {
-                m_functions.at(m_functions.size() - 1).push_back({IR_LABEL, str.name});
-                m_functions.at(m_functions.size() - 1).push_back({IR_DEFSTR, str.value});
+                m_functions.back().push_back({IR_LABEL, str.name});
+                m_functions.back().push_back({IR_DEFSTR, str.value});
             }
             
             for (blob_def_t& blob : m_pending_blobs) {
-                m_functions.at(m_functions.size() - 1).push_back({IR_LABEL, blob.name});
-                m_functions.at(m_functions.size() - 1).push_back({IR_DEFBLOB, blob.file});
+                m_functions.back().push_back({IR_LABEL, blob.name});
+                m_functions.back().push_back({IR_DEFBLOB, blob.file});
             }
         }
     };

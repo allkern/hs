@@ -136,7 +136,7 @@ namespace hs {
                         } break;
 
                         case IR_CALLR: {
-                            ss << "call    " << map_register(i.args[0]);
+                            ss << "call.r  " << map_register(i.args[0]);
                         } break;
 
                         case IR_DECSP: {
@@ -164,11 +164,11 @@ namespace hs {
                         } break;
 
                         case IR_MOVI: {
-                            ss << "li.w    " << map_register(i.args[0]) << ", " << fmt_label(i.args[1]);
+                            ss << "li.w    " << map_register(i.args[0]) << ", !" << fmt_label(i.args[1]);
                         } break;
 
                         case IR_NOP: {
-                            ss << "nop";
+                            ss << "nop     r0";
                         } break;
 
                         case IR_PUSHR: {
@@ -180,7 +180,7 @@ namespace hs {
                         } break;
 
                         case IR_RET: {
-                            ss << "ret";
+                            ss << "ret     r0";
 
                             indented = false;
                         } break;
@@ -241,6 +241,10 @@ namespace hs {
 
                         case IR_ENTRY: {
                             ss << ".entry !" << fmt_label(i.args[0]);
+                        } break;
+
+                        case IR_DEBUG: {
+                            ss << "debug " << fmt_label(i.args[0]);
                         } break;
                     }
 
