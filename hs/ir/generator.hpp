@@ -1,8 +1,10 @@
 #pragma once
 
+#include "../parser/expressions/type.hpp"
 #include "../parser/parser.hpp"
 #include "../error.hpp"
 #include "../cli.hpp"
+
 #include "instruction.hpp"
 
 #include <stack>
@@ -40,9 +42,16 @@ namespace hs {
         std::vector <array_t> m_pending_arrays;
         std::vector <blob_def_t> m_pending_blobs;
 
-        std::unordered_map <std::string, int> m_dummy_local_map;
 
-        std::stack <std::unordered_map <std::string, int>> m_local_maps;
+        struct variable_t {
+            int address;
+
+            std::string type;
+        };
+
+        std::unordered_map <std::string, variable_t> m_dummy_local_map;
+
+        std::stack <std::unordered_map <std::string, variable_t>> m_local_maps;
 
         std::stack <int> m_current_num_locals;
         std::stack <int> m_current_num_args;
@@ -103,6 +112,8 @@ namespace hs {
 
         void init(parser_t* parser, error_logger_t* logger, cli_parser_t* cli) {
             m_po = parser->get_output();
+
+            _log(debug, "m_po->variables.size()=%u", m_po->variables.size());
 
             m_cli = cli;
             m_logger = logger;
@@ -187,15 +198,25 @@ namespace hs {
 
                     for (function_arg_t& arg : fd->args) {
                         m_current_num_args.top()++;
-
+                        
                         append({IR_DEFINE, get_variable_name(arg.name), "[fp-" + std::to_string(4 * (arg_frame_pos++)) + "]"});
 
-                        m_local_maps.top().insert({arg.name, m_current_num_args.top() * 4});
+                        variable_t var;
+
+                        var.address = m_current_num_args.top() * 4;
+                        var.type = arg.type;
+
+                        m_local_maps.top().insert({arg.name, var});
                     }
+
+                    variable_t return_address;
+
+                    return_address.address = m_current_num_args.top() * 4;
+                    return_address.type = "u32";
 
                     m_current_num_args.top()++;
 
-                    m_local_maps.top().insert({"<return_address>", m_current_num_args.top() * 4});
+                    m_local_maps.top().insert({"<return_address>", return_address});
 
                     generate_impl(fd->body, base, false, true);
 
@@ -258,7 +279,12 @@ namespace hs {
                     if (inside_fn) {
                         m_current_num_locals.top()++;
 
-                        m_local_maps.top().insert({vd->name, (m_current_num_locals.top() + m_current_num_args.top()) * 4});
+                        variable_t var;
+
+                        var.address = (m_current_num_locals.top() + m_current_num_args.top()) * 4;
+                        var.type = vd->type;
+
+                        m_local_maps.top().insert({vd->name, var});
                     }
 
                     return 1;
@@ -307,10 +333,18 @@ namespace hs {
                             // If referring by value, then load the value from
                             // stack
 
-                            append({IR_LOADF, "R" + std::to_string(base), std::to_string(m_local_maps.top()[nr->name])});
+                            variable_t var = m_local_maps.top()[nr->name];
+
+                            std::string size = std::to_string(types[var.type]);
+
+                            append({IR_LOADF, "R" + std::to_string(base), std::to_string(var.address), size});
                         } else {
+                            variable_t var = m_local_maps.top()[nr->name];
+
+                            std::string size = std::to_string(types[var.type]);
+
                             // Else, load the address in stack 
-                            append({IR_LEAF, "R" + std::to_string(base), std::to_string(m_local_maps.top()[nr->name])});
+                            append({IR_LEAF, "R" + std::to_string(base), std::to_string(var.address), size});
                         }
                     } else {
                         // If its a global variable, then load it's address
@@ -319,7 +353,7 @@ namespace hs {
                         // If referring by value, then load the value at that
                         // address                        
                         if (!pointer) {
-                            append({IR_LOADR, "R" + std::to_string(base), "R" + std::to_string(base)});
+                            append({IR_LOADR, "R" + std::to_string(base), "R" + std::to_string(base), "4"});
                         }
                     }
 
