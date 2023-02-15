@@ -434,6 +434,9 @@ namespace hs {
 
             int i = 0;
 
+            // Align .rodata to 4-byte boundary
+            m_functions.back().push_back({IR_ALIGN, "4"});
+
             if (m_cli->get_setting(ST_OUTPUT_FORMAT) == "elf32") {
                 m_functions.back().push_back({IR_SECTION, ".rodata"});
             }
@@ -486,6 +489,9 @@ namespace hs {
                 m_functions.back().push_back({IR_LABEL, blob.name});
                 m_functions.back().push_back({IR_DEFBLOB, blob.file});
             }
+
+            // Align assembler generated sections to 4-byte boundary
+            m_functions.back().push_back({IR_ALIGN, "4"});
         }
     };
 }

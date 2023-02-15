@@ -837,8 +837,6 @@ uint32_t encode_instruction(mnemonic_data_t* md, operand_data_t* od, size_t* siz
             opcode |= (od->integer[2] & 0xffff) << 1;
             opcode |= (od->integer[2] & 0x10000) << 15;
             opcode |= md->brn_link;
-
-            _log(debug, "imm=%08x", od->integer[2]);
         } break;
 
         case IT_BRR: {
@@ -989,6 +987,7 @@ uint32_t encode_instruction(mnemonic_data_t* md, operand_data_t* od, size_t* siz
 #define AD_DEF      0x0007
 #define AD_UNDEF    0x0008
 #define AD_ENTRY    0x0009
+#define AD_ALIGN    0x000a
 #define AD_ESECT    0x0100
 
 std::unordered_map <std::string, int> directive_id_map = {
@@ -1002,10 +1001,43 @@ std::unordered_map <std::string, int> directive_id_map = {
     { "def"    , AD_DEF    },
     { "undef"  , AD_UNDEF  },
     { "entry"  , AD_ENTRY  },
+    { "align"  , AD_ALIGN  },
     
     // ELF-specific
     { "section", AD_ESECT  }
 };
+
+void hv2a_handle_align(hv2a_t* as) {
+    int type = 0;
+
+    uint32_t alignment = hv2a_parse_integer(as, &type);
+
+    if (type == INT_TYPE_SYMBOL) {
+        ERROR(0 /* To-do */, "Symbols not allowed for use with .align");
+    }
+
+    if (alignment & (alignment - 1)) {
+        ERROR(0 /* To-do */, "Alignment not a power of two");
+    }
+
+    uint32_t unaligned = as->pos & (alignment - 1);
+
+    if (!unaligned)
+        return;
+
+    int bytes = alignment - unaligned;
+
+    as->pos += bytes;
+    as->vaddr += bytes;
+
+    if (as->pass != 1)
+        return;
+    
+    char c = '\0';
+
+    for (int i = 0; i < bytes; i++)
+        as->output->write((char*)&c, 1);
+}
 
 void hv2a_handle_org(hv2a_t* as) {
     int type = 0;
@@ -1015,7 +1047,6 @@ void hv2a_handle_org(hv2a_t* as) {
     if (type == INT_TYPE_SYMBOL) {
         ERROR(0 /* To-do */, "Symbols not allowed for use with .org");
     }
-
 
     as->vaddr = new_pos;
 
@@ -1290,15 +1321,15 @@ void hv2a_handle_section(hv2a_t* as) {
 }
 
 void hv2a_handle_asciiz(hv2a_t* as, bool zt) {
-    if (as->pass != 1)
-        return;
-
     std::string str = hv2a_parse_string(as);
-
-    as->output->write(str.c_str(), str.size());
 
     as->pos += str.size();
     as->vaddr += str.size();
+
+    if (as->pass != 1)
+        return;
+
+    as->output->write(str.c_str(), str.size());
 
     char zero = '\0';
 
@@ -1365,6 +1396,10 @@ bool hv2a_handle_directive(hv2a_t* as) {
 
         case AD_ENTRY: {
             hv2a_handle_entry(as);
+        } break;
+
+        case AD_ALIGN: {
+            hv2a_handle_align(as);
         } break;
         
         case AD_ESECT: {
@@ -1508,7 +1543,7 @@ void hv2a_encode_pseudo_op(hv2a_t* as, mnemonic_data_t* md, operand_data_t* od) 
         case PSD_RET: {
             PUSH("add.u     sp, 4");
             PUSH("load.l    at, [sp-4]");
-            PUSH("add.u     at, %u", hv2a_get_pipeline_offset(as) + 4);
+            PUSH("add.u     at, %u", hv2a_get_pipeline_offset(as));
             PUSH("move      pc, at");
         } break;
 

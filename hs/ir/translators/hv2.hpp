@@ -132,7 +132,7 @@ namespace hs {
                         } break;
 
                         case IR_ALU: {
-                            ss << map_binary_op(i.args[0]) << "\t" << map_register(i.args[1]) << ", " << map_register(i.args[2]);
+                            ss << map_binary_op(i.args[0]) << "   " << map_register(i.args[1]) << ", " << map_register(i.args[1]) << ", " << map_register(i.args[2]);
                         } break;
 
                         case IR_CALLR: {
@@ -245,6 +245,10 @@ namespace hs {
 
                         case IR_DEBUG: {
                             ss << "debug " << fmt_label(i.args[0]);
+                        } break;
+
+                        case IR_ALIGN: {
+                            ss << ".align " << fmt_label(i.args[0]);
                         } break;
                     }
 

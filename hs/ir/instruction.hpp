@@ -33,7 +33,8 @@ namespace hs {
         IR_ENTRY,       // Set entry point (ELF)
         IR_PASSTHROUGH, // Passthrough, will emit its first argument verbatim
         IR_NOP,         // NOP
-        IR_DEBUG        // NOP
+        IR_DEBUG,       // Emit debug opcode (if any)
+        IR_ALIGN        // Emit align assembler directive
     };
 
     std::string m_ir_mnemonic_map[] = {
@@ -66,7 +67,8 @@ namespace hs {
         "ENTRY",
         "PASSTHROUGH",
         "NOP",
-        "DEBUG"
+        "DEBUG",
+        "ALIGN"
     };
 
     struct ir_instruction_t {
