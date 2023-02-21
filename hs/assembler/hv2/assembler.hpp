@@ -96,6 +96,24 @@ struct elf32_phdr_t {
 	uint32_t p_align        = 0;
 };
 
+struct elf32_sym_t {
+    uint32_t st_name        = 0;
+    uint32_t st_value       = 0;
+    uint32_t st_size        = 0;
+    uint8_t  st_info        = 0;
+    uint8_t  st_other       = 0;
+    uint16_t st_shndx       = 0;
+};
+
+struct elf_symbol_t {
+    std::string name;
+    uint32_t addr;
+
+    bool global = false;
+
+    elf32_sym_t hdr;
+};
+
 std::unordered_map <std::string, uint32_t> register_names = {
     // Registers and aliases
     { "r0", 0 }, { "zero", 0 },
@@ -152,6 +170,10 @@ struct hv2a_t {
     uint32_t pos = 0;
     uint32_t vaddr = 0;
     uint32_t entry;
+
+    std::vector <elf_symbol_t> symbols = {
+        { "", 0, 0, { 0 } }
+    };
 
     std::vector <elf_section_t> sections = {
         { "", { 0 } }
@@ -1674,6 +1696,24 @@ uint32_t hv2a_get_shstrtab_size(hv2a_t* as) {
     return size;
 }
 
+uint32_t hv2a_get_strtab_size(hv2a_t* as) {
+    size_t size = 0;
+
+    for (elf_symbol_t& sym : as->symbols) {
+        size += sym.name.size() + 1;
+    }
+
+    return size;
+}
+
+uint32_t hv2a_get_symtab_size(hv2a_t* as) {
+    uint32_t size = 0;
+
+    size += as->symbols.size() * sizeof(elf32_sym_t);
+
+    return size;
+}
+
 #define STACK_BASE 0xc0000000
 #define STACK_SIZE 0x80000 // 512 KiB
 #define PHDR_COUNT 3
@@ -1733,6 +1773,38 @@ void hv2a_assemble_raw(hv2a_t* as, std::istream* input, std::ostream* output) {
     }
 }
 
+#define ST_OBJECT   1
+#define ST_FUNCTION 2
+
+static std::unordered_map <int, std::string> st_section_map = {
+    { ST_OBJECT  , ".rodata" },
+    { ST_FUNCTION, ".text"   }
+};
+
+static std::unordered_map <char, uint8_t> symtag_st_map = {
+    { 'D', ST_OBJECT   },
+    { 'F', ST_FUNCTION }
+};
+int hv2a_get_section_index(hv2a_t* as, std::string name) {
+    int idx;
+
+    for (idx = 0; idx < as->sections.size(); idx++) {
+        if (as->sections[idx].name == name) break;
+    }
+
+    return idx;
+}
+
+void hv2a_gather_symbols(hv2a_t* as) {
+    for (const std::pair <const std::string, uint32_t>& sym: as->local_symbols) {
+        as->symbols.push_back({ sym.first.c_str(), sym.second, false, { 0 } });
+    }
+
+    for (const std::pair <const std::string, uint32_t>& sym: as->global_symbols) {
+        as->symbols.push_back({ sym.first.c_str(), sym.second, true, { 0 } });
+    }
+}
+
 void hv2a_assemble_elf32(hv2a_t* as, std::istream* input, std::ostream* output) {
     elf32_hdr_t hdr;
 
@@ -1745,6 +1817,8 @@ void hv2a_assemble_elf32(hv2a_t* as, std::istream* input, std::ostream* output) 
 
     // Assemble input to buffer
     uint32_t pos = hv2a_assemble_stream_impl(as, input, &buf);
+
+    hv2a_gather_symbols(as);
     
     // Prepare ELF data
     elf_section_t sect[2];
@@ -1759,29 +1833,65 @@ void hv2a_assemble_elf32(hv2a_t* as, std::istream* input, std::ostream* output) 
         if (s.name == ".rodata") sect[1] = s;
     }
 
-    // Create shstrtab section
+    pos += ELF_HDR_SIZE;
+
+    // Create string table section
     elf_section_t strtab;
 
-    strtab.name             = ".shstrtab";
+    strtab.name             = ".strtab";
     strtab.hdr.sh_name      = 0;
     strtab.hdr.sh_type      = SHT_STRTAB;
     strtab.hdr.sh_flags     = SHF_STRINGS;
-    strtab.hdr.sh_offset    = pos + ELF_HDR_SIZE;
+    strtab.hdr.sh_offset    = pos;
+    strtab.hdr.sh_size      = hv2a_get_strtab_size(as);
     strtab.hdr.sh_addr      = 0x00000000; // Section not mapped
     strtab.hdr.sh_addralign = 1;
 
-    // Calculate shstrtab size taking into account
-    // it's own name
-    uint32_t shstrtab_size = hv2a_get_shstrtab_size(as) + strtab.name.size() + 1;
-    strtab.hdr.sh_size      = shstrtab_size;
+    pos += strtab.hdr.sh_size;
 
-    // Push shstrtab
+    // Push strtab
     as->sections.push_back(strtab);
 
-    // List sections (remove)
-    // for (elf_section_t& s : as->sections) {
-    //     _hv2_log(debug, "section %s start=%08x, vaddr=%08x, size=%08x", s.name.c_str(), s.hdr.sh_offset, s.vaddr, s.hdr.sh_size);
-    // }
+    // Create symbol table section
+    elf_section_t symtab;
+
+    symtab.name             = ".symtab";
+    symtab.hdr.sh_name      = 0;
+    symtab.hdr.sh_type      = SHT_SYMTAB;
+    symtab.hdr.sh_flags     = SHF_EXCLUDE;
+    symtab.hdr.sh_link      = hv2a_get_section_index(as, ".strtab");
+    symtab.hdr.sh_info      = as->local_symbols.size() + 1;
+    symtab.hdr.sh_entsize   = sizeof(elf32_sym_t);
+    symtab.hdr.sh_offset    = pos;
+    symtab.hdr.sh_size      = hv2a_get_symtab_size(as);
+    symtab.hdr.sh_addr      = 0x00000000; // Section not mapped
+    symtab.hdr.sh_addralign = 1;
+
+    pos += symtab.hdr.sh_size;
+
+    // Push symtab
+    as->sections.push_back(symtab);
+
+    // Create shstrtab section
+    elf_section_t shstrtab;
+
+    shstrtab.name             = ".shstrtab";
+    shstrtab.hdr.sh_name      = 0;
+    shstrtab.hdr.sh_type      = SHT_STRTAB;
+    shstrtab.hdr.sh_flags     = SHF_STRINGS;
+    shstrtab.hdr.sh_offset    = pos;
+    shstrtab.hdr.sh_addr      = 0x00000000; // Section not mapped
+    shstrtab.hdr.sh_addralign = 1;
+
+    // Calculate shstrtab size taking into account
+    // it's own name
+    uint32_t shstrtab_size = hv2a_get_shstrtab_size(as) + shstrtab.name.size() + 1;
+    shstrtab.hdr.sh_size      = shstrtab_size;
+
+    pos += shstrtab.hdr.sh_size;
+
+    // Push shstrtab
+    as->sections.push_back(shstrtab);
 
     // Fill in header info
     hdr.e_type          = ET_EXEC;
@@ -1823,7 +1933,7 @@ void hv2a_assemble_elf32(hv2a_t* as, std::istream* input, std::ostream* output) 
     hdr.e_shentsize = sizeof(elf32_shdr_t);
     hdr.e_shnum     = as->sections.size();
     hdr.e_shstrndx  = as->sections.size() - 1;
-    hdr.e_shoff     = pos + ELF_HDR_SIZE + shstrtab_size;
+    hdr.e_shoff     = pos;
 
     // Start writing stuff, write ELF and program headers
     output->write((char*)&hdr, sizeof(elf32_hdr_t));
@@ -1839,6 +1949,33 @@ void hv2a_assemble_elf32(hv2a_t* as, std::istream* input, std::ostream* output) 
         output->write(&c, sizeof(char));
 
         c = as->output->get();
+    }
+
+    int strtab_off = 0;
+    
+    // Write strtab
+    for (elf_symbol_t& sym : as->symbols) {
+        sym.hdr.st_name = strtab_off;
+
+        if (sym.name.size()) {
+            output->write(sym.name.c_str(), sym.name.size());
+        }
+
+        output->write("\0", sizeof(char));
+
+        strtab_off += 1 + sym.name.size();
+    }
+
+    // Write symtab
+    for (elf_symbol_t& sym : as->symbols) {
+        int type = symtag_st_map[sym.name[0]];
+
+        sym.hdr.st_info = (((int)sym.global) << 4) | (type & 0xf);
+        sym.hdr.st_size = 4;
+        sym.hdr.st_value = sym.addr;
+        sym.hdr.st_shndx = hv2a_get_section_index(as, st_section_map[type]);
+
+        output->write((char*)&sym.hdr, sizeof(elf32_sym_t));
     }
 
     // This keeps track of offsets within shstrtab

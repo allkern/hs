@@ -31,7 +31,7 @@ namespace hs {
             m_po = parser->get_output();
             m_logger = logger;
 
-            m_scope.push("<global>");
+            m_scope.push("F<global>");
         }
 
         std::string get_scope(std::string name) {
@@ -62,7 +62,7 @@ namespace hs {
                 case EX_FUNCTION_DEF: {
                     function_def_t* fd = (function_def_t*)expr;
 
-                    if (m_scope.top() == "<global>") {
+                    if (m_scope.top() == "F<global>") {
                         m_vars_in_global_scope.push_back(fd->name);
                     } else {
                         auto global = std::find(
@@ -104,7 +104,7 @@ namespace hs {
                 case EX_VARIABLE_DEF: {
                     variable_def_t* vd = (variable_def_t*)expr;
 
-                    if (m_scope.top() == "<global>") {
+                    if (m_scope.top() == "F<global>") {
                         m_vars_in_global_scope.push_back(vd->name);
                     } else {
                         auto global = std::find(
@@ -166,7 +166,7 @@ namespace hs {
                     if (found_in_current_scope) break;
 
                     if (found_in_global_scope) {
-                        nr->name = "<global>." + nr->name;
+                        nr->name = "F<global>." + nr->name;
                     } else {
                         WARNING(
                             fmt("Using undefined name \"%s\" on scope %s",

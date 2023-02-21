@@ -63,7 +63,7 @@ namespace hs {
         std::string new_string(std::string str) {
             string_t string;
 
-            string.name = "S" + std::to_string(m_strings++);
+            string.name = "DS" + std::to_string(m_strings++);
             string.value = str;
 
             m_pending_strings.push_back(string);
@@ -74,14 +74,14 @@ namespace hs {
         std::string new_array(array_t arr) {
             m_pending_arrays.push_back(arr);
 
-            return "A" + std::to_string(m_arrays++);
+            return "DA" + std::to_string(m_arrays++);
         }
         
         std::string new_blob(std::string file) {
             blob_def_t blob_def;
 
             blob_def.file = file;
-            blob_def.name = "B" + std::to_string(m_blobs++);
+            blob_def.name = "DB" + std::to_string(m_blobs++);
 
             m_pending_blobs.push_back(blob_def);
 
@@ -404,6 +404,8 @@ namespace hs {
                 case EX_ASSIGNMENT: {
                     assignment_t* ae = (assignment_t*)expr;
 
+                    ae->assignee->get_type();
+
                     int rhs = generate_impl(ae->value, base, false, inside_fn);
                     int lhs = generate_impl(ae->assignee, base + rhs, true, inside_fn);
 
@@ -453,7 +455,7 @@ namespace hs {
             // Function call semantics
             m_functions.front().push_back({IR_PUSHR, "FP"});
             m_functions.front().push_back({IR_MOV, "FP", "SP"});
-            m_functions.front().push_back({IR_MOVI, "R0", "<global>.main"});
+            m_functions.front().push_back({IR_MOVI, "R0", "F<global>.main"});
             m_functions.front().push_back({IR_CALLR, "R0"});
             m_functions.front().push_back({IR_MOV, "R0", "A0"});
             m_functions.front().push_back({IR_MOV, "SP", "FP"});
@@ -477,7 +479,7 @@ namespace hs {
 
 
             for (array_t& arr : m_pending_arrays) {
-                m_functions.back().push_back({IR_LABEL, "A" + std::to_string(i++)});
+                m_functions.back().push_back({IR_LABEL, "DA" + std::to_string(i++)});
                 
                 for (expression_t* expr : arr.values) {
                     switch (expr->get_type()) {
