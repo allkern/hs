@@ -8,9 +8,9 @@
 
 namespace hs {
     struct if_else_t : public expression_t {
-        expression_t* cond;
-        expression_t* if_expr;
-        expression_t* else_expr;
+        expression_t* cond = nullptr;
+        expression_t* if_expr = nullptr;
+        expression_t* else_expr = nullptr;
 
         std::string print(int hierarchy) override {
             std::ostringstream ss;

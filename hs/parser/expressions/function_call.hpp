@@ -9,7 +9,7 @@
 
 namespace hs {
     struct function_call_t : public expression_t {
-        expression_t* addr;
+        expression_t* addr = nullptr;
         std::vector <expression_t*> args;
 
         std::string print(int hierarchy) override {

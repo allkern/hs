@@ -9,7 +9,7 @@
 
 namespace hs {
     struct invoke_expr_t : public expression_t {
-        expression_t* ptr;
+        expression_t* ptr = nullptr;
 
         std::string print(int hierarchy) override {
             std::ostringstream ss;

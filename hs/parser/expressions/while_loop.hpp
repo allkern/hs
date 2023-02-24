@@ -8,8 +8,8 @@
 
 namespace hs {
     struct while_loop_t : public expression_t {
-        expression_t* condition;
-        expression_t* body;
+        expression_t* condition = nullptr;
+        expression_t* body = nullptr;
 
         std::string print(int hierarchy) override {
             std::ostringstream ss;

@@ -11,8 +11,8 @@ namespace hs {
         // To-do: IR Unimplemented
         // Implement indexed array access
 
-        expression_t* type_or_name;
-        expression_t* addr;
+        expression_t* type_or_name = nullptr;
+        expression_t* addr = nullptr;
 
         std::string print(int hierarchy) override {
             std::ostringstream ss;

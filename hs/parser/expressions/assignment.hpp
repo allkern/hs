@@ -9,8 +9,8 @@
 namespace hs {
     struct assignment_t : public expression_t {
         std::string op;
-        expression_t* assignee;
-        expression_t* value;
+        expression_t* assignee = nullptr;
+        expression_t* value = nullptr;
 
         std::string print(int hierarchy) override {
             std::ostringstream ss;

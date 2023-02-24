@@ -17,8 +17,8 @@ namespace hs {
 
     struct binary_op_t : public expression_t {
         std::string op;
-        expression_t* lhs;
-        expression_t* rhs;
+        expression_t* lhs = nullptr;
+        expression_t* rhs = nullptr;
 
         std::string print(int hierarchy) override {
             std::ostringstream ss;

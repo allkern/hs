@@ -15,7 +15,7 @@ namespace hs {
 
     struct function_def_t : public expression_t {
         std::string name;
-        expression_t* body;
+        expression_t* body = nullptr;
         std::string type;
         std::vector <function_arg_t> args;
 
