@@ -113,8 +113,6 @@ namespace hs {
         void init(parser_t* parser, error_logger_t* logger, cli_parser_t* cli) {
             m_po = parser->get_output();
 
-            _log(debug, "m_po->variables.size()=%u", m_po->variables.size());
-
             m_cli = cli;
             m_logger = logger;
 
@@ -298,7 +296,7 @@ namespace hs {
                     append({IR_PUSHR, "FP"});
 
                     for (expression_t* exp : fc->args) {
-                        generate_impl(exp, base + r, false, inside_fn);
+                        generate_impl(exp, base + r, true, inside_fn);
 
                         append({IR_PUSHR, "R" + std::to_string(base + r)});
                     }
@@ -385,9 +383,9 @@ namespace hs {
 
                         int a = generate_impl(bo, base, false, inside_fn);
 
-                        //if (!pointer) { 
+                        if (!pointer) { 
                             append({IR_LOADR, "R" + std::to_string(base), "R" + std::to_string(base)});
-                        //}
+                        }
 
                         return a;
                     } else {
@@ -477,7 +475,6 @@ namespace hs {
                 m_functions.back().push_back({IR_SECTION, ".rodata"});
             }
 
-
             for (array_t& arr : m_pending_arrays) {
                 m_functions.back().push_back({IR_LABEL, "DA" + std::to_string(i++)});
                 
@@ -514,16 +511,20 @@ namespace hs {
                         } break;
                     }
                 }
+
+                m_functions.back().push_back({IR_ALIGN, "4"});
             }
             
             for (string_t& str : m_pending_strings) {
                 m_functions.back().push_back({IR_LABEL, str.name});
                 m_functions.back().push_back({IR_DEFSTR, str.value});
+                m_functions.back().push_back({IR_ALIGN, "4"});
             }
             
             for (blob_def_t& blob : m_pending_blobs) {
                 m_functions.back().push_back({IR_LABEL, blob.name});
                 m_functions.back().push_back({IR_DEFBLOB, blob.file});
+                m_functions.back().push_back({IR_ALIGN, "4"});
             }
 
             // Align assembler generated sections to 4-byte boundary

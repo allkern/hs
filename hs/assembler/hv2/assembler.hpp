@@ -431,6 +431,8 @@ std::string operand_mode_name[] = {
 #define OPR_IDX   1
 
 inline uint32_t hv2a_get_pipeline_offset(hv2a_t* as) {
+    return (as->pipeline_size - 1) * 4;
+
     if (as->flush)
         return 0;
     
@@ -1348,18 +1350,18 @@ void hv2a_handle_asciiz(hv2a_t* as, bool zt) {
     as->pos += str.size();
     as->vaddr += str.size();
 
+    if (zt) {
+        as->pos++;
+        as->vaddr++;
+    }
+
     if (as->pass != 1)
         return;
 
     as->output->write(str.c_str(), str.size());
 
-    char zero = '\0';
-
     if (zt) {
         as->output->write("\0", sizeof(char));
-
-        as->pos++;
-        as->vaddr++;
     }
 }
 
@@ -1565,7 +1567,7 @@ void hv2a_encode_pseudo_op(hv2a_t* as, mnemonic_data_t* md, operand_data_t* od) 
         case PSD_RET: {
             PUSH("add.u     sp, 4");
             PUSH("load.l    at, [sp-4]");
-            PUSH("add.u     at, %u", hv2a_get_pipeline_offset(as));
+            // PUSH("sub.u     at, %u", hv2a_get_pipeline_offset(as));
             PUSH("move      pc, at");
         } break;
 
