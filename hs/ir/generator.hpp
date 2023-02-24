@@ -365,7 +365,20 @@ namespace hs {
                     int lhs = generate_impl(bo->lhs, base + rhs, false, inside_fn);
                     
                     // To-do: Check this
-                    append({IR_ALU, bo->bop, "R" + std::to_string(base + rhs), "R" + std::to_string(base)});
+                    append({IR_ALU, bo->op, "R" + std::to_string(base + rhs), "R" + std::to_string(base)});
+                    append({IR_MOV, "R" + std::to_string(base), "R" + std::to_string(base + rhs)});
+
+                    return lhs + rhs;
+                } break;
+
+                case EX_COMP_OP: {
+                    comp_op_t* co = (comp_op_t*)expr;
+
+                    int rhs = generate_impl(bo->rhs, base, false, inside_fn);
+                    int lhs = generate_impl(bo->lhs, base + rhs, false, inside_fn);
+                    
+                    // To-do: Check this
+                    append({IR_CMPR, co->op, "R" + std::to_string(base + rhs), "R" + std::to_string(base)});
                     append({IR_MOV, "R" + std::to_string(base), "R" + std::to_string(base + rhs)});
 
                     return lhs + rhs;

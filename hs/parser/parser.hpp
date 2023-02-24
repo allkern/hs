@@ -21,6 +21,7 @@
 #include "expressions/asm_block.hpp"
 #include "expressions/binary_op.hpp"
 #include "expressions/name_ref.hpp"
+#include "expressions/comp_op.hpp"
 #include "expressions/if_else.hpp"
 #include "expressions/invoke.hpp"
 #include "expressions/array.hpp"
@@ -274,14 +275,14 @@ namespace hs {
             return invoke;
         }
 
-        expression_t* parse_binary_operation(expression_t* lhs) {
+        expression_t* parse_binary_op(expression_t* lhs) {
             binary_op_t* bop = new binary_op_t;
 
             bop->line = m_current.line;
             bop->offset = m_current.offset;
             bop->len = m_current.text.size();
 
-            bop->bop = m_current.text;
+            bop->op = m_current.text;
 
             m_current = m_input->get();
             
@@ -289,6 +290,23 @@ namespace hs {
             bop->rhs = parse_expression();
 
             return bop;
+        }
+
+        expression_t* parse_comp_op(expression_t* lhs) {
+            comp_op_t* cop = new comp_op_t;
+
+            cop->line = m_current.line;
+            cop->offset = m_current.offset;
+            cop->len = m_current.text.size();
+
+            cop->op = m_current.text;
+
+            m_current = m_input->get();
+            
+            bop->lhs = lhs;
+            bop->rhs = parse_expression();
+
+            return cop;
         }
 
         expression_t* parse_variable_def(std::string type) {
@@ -660,7 +678,11 @@ namespace hs {
         expression_t* parse_rightside_operation(expression_t* lhs) {
             switch (m_current.type) {
                 case LT_OPERATOR_BINARY: case LT_STAR: case LT_AMPERSAND: {
-                    return parse_binary_operation(lhs);
+                    return parse_binary_op(lhs);
+                } break;
+
+                case LT_OPERATOR_COMP: {
+                    return parse_comp_op(lhs);
                 } break;
 
                 case LT_OPENING_PARENT: {

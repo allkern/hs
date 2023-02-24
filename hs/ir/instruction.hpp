@@ -16,6 +16,7 @@ namespace hs {
         IR_DECSP,       // Decrement Stack Pointer
         IR_CALLR,       // Call register
         IR_CMPZB,       // Compare register with 0 and branch
+        IR_CMPR,        // Compare registers
         IR_PUSHR,       // Push register
         IR_POPR,        // Pop register
         IR_LEAF,        // Push register

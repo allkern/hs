@@ -43,6 +43,15 @@ namespace hs {
             BP_SHR
         };
 
+        enum cop_t {
+            CP_EQ,
+            CP_NE,
+            CP_GT,
+            CP_GE,
+            CP_LT,
+            CP_LE
+        };
+
         std::unordered_map <std::string, bop_t> m_bop_map = {
             { "+" , BP_ADD },
             { "-" , BP_SUB },
@@ -53,6 +62,15 @@ namespace hs {
             { "^" , BP_XOR },
             { "<<", BP_SHL },
             { ">>", BP_SHR }
+        };
+
+        std::unordered_map <std::string, cop_t> m_cop_map = {
+            { "==", CP_EQ },
+            { "!=", CP_NE },
+            { ">" , CP_GT },
+            { ">=", CP_GE },
+            { "<" , CP_LT },
+            { "<=", CP_LE }
         };
 
         std::string map_binary_op(std::string bop_str) {
@@ -70,7 +88,22 @@ namespace hs {
                 case BP_SHR: return "lsr.u";
             }
 
-            return "unimplemented_operator";
+            return "unimplemented_binary_operator";
+        }
+
+        std::string map_comp_op(std::string cop_str) {
+            cop_t cop = m_cop_map[cop_str];
+
+            switch (cop) {
+                case CP_EQ: return "seq.u";
+                case CP_NE: return "sne.u";
+                case CP_GT: return "sgt.u";
+                case CP_GE: return "sge.u";
+                case CP_LT: return "slt.u";
+                case CP_LE: return "sle.u";
+            }
+
+            return "unimplemented_comp_operator";
         }
 
         static std::string map_branch(std::string cond) {
@@ -229,6 +262,13 @@ namespace hs {
                                << map_register(i.args[1]) << ", "
                                << "zero" << ", "
                                << i.args[2];
+                        } break;
+
+                        case IR_CMPR: {
+                            ss << map_comp_op(i.args[0]) << "   "
+                               << map_register(i.args[1]) << ", "
+                               << map_register(i.args[1]) << ", "
+                               << map_register(i.args[2]);
                         } break;
                         
                         case IR_SECTION: {
