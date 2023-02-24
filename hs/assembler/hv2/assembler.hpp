@@ -224,20 +224,23 @@ struct mnemonic_data_t {
     bool     li_sx;
     uint32_t pseudo_op;
     uint32_t pseudo_data[2];
+    uint32_t scr_op;
 };
 
-#define ALU(o, s, m)     { "", 0x00, o, s, m, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
-#define BRN(t, l)        { "", t   , 0, 0, 0, l, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
-#define BRR(l, c)        { "", 0x0d, 0, 0, 0, l, c, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
-#define CPE(o)           { "", 0x0e, 0, 0, 0, 0, 0, o, 0, 0, 0, 0, 0, 0, 0, 0 }
-#define CPI()            { "", 0x1e, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
-#define SCI(t, s)        { "", t   , 0, 0, 0, 0, 0, 0, 0, 0, 0, s, 0, 0, 0, 0 }
-#define SYS(o)           { "", 0x0f, 0, 0, 0, 0, 0, 0, o, 0, 0, 0, 0, 0, 0, 0 }
-#define LSL(o, s)        { "", 0x10, 0, 0, 0, 0, 0, 0, 0, o, s, 0, 0, 0, 0, 0 }
-#define LI(s)            { "", 0x11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, s, 0, 0, 0 }
-#define PSD0(o)          { "", 0x00, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, o, 0, 0 }
-#define PSD1(o, a)       { "", 0x00, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, o, a, 0 }
-#define PSD2(o, a, b)    { "", 0x00, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, o, a, b }
+#define ALU(o, s, m)     { "", 0x00, o, s, m, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+#define BRN(t, l)        { "", t   , 0, 0, 0, l, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+#define BRR(l, c)        { "", 0x0d, 0, 0, 0, l, c, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+#define CPE(o)           { "", 0x0e, 0, 0, 0, 0, 0, o, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+#define CPI()            { "", 0x1e, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+#define SCI(t, s)        { "", t   , 0, 0, 0, 0, 0, 0, 0, 0, 0, s, 0, 0, 0, 0, 0 }
+#define SYS(o)           { "", 0x0f, 0, 0, 0, 0, 0, 0, o, 0, 0, 0, 0, 0, 0, 0, 0 }
+#define LSL(o, s)        { "", 0x10, 0, 0, 0, 0, 0, 0, 0, o, s, 0, 0, 0, 0, 0, 0 }
+#define LI(s)            { "", 0x11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, s, 0, 0, 0, 0 }
+#define PSD0(o)          { "", 0x00, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, o, 0, 0, 0 }
+#define PSD1(o, a)       { "", 0x00, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, o, a, 0, 0 }
+#define PSD2(o, a, b)    { "", 0x00, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, o, a, b, 0 }
+#define SCR(o)           { "", 0x0b, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, o }
+
 
 std::unordered_map <std::string, mnemonic_data_t> mnemonic_data_map = {
     // ALU register/immediate
@@ -295,12 +298,17 @@ std::unordered_map <std::string, mnemonic_data_t> mnemonic_data_map = {
     { "cpex", CPI() },
 
     // Set Cond Immediate
-    { "seq.u", SCI(0x13, 0) }, { "seq.s", SCI(0x13, 1) },
-    { "sne.u", SCI(0x15, 0) }, { "sne.s", SCI(0x15, 1) },
-    { "sgt.u", SCI(0x17, 0) }, { "sgt.s", SCI(0x17, 1) },
-    { "sge.u", SCI(0x19, 0) }, { "sge.s", SCI(0x19, 1) },
-    { "slt.u", SCI(0x1b, 0) }, { "slt.s", SCI(0x1b, 1) },
-    { "sle.u", SCI(0x1d, 0) }, { "sle.s", SCI(0x1d, 1) },
+    { "seqi.u", SCI(0x13, 0) }, { "seqi.s", SCI(0x13, 1) },
+    { "snei.u", SCI(0x15, 0) }, { "snei.s", SCI(0x15, 1) },
+    { "sgti.u", SCI(0x17, 0) }, { "sgti.s", SCI(0x17, 1) },
+    { "sgei.u", SCI(0x19, 0) }, { "sgei.s", SCI(0x19, 1) },
+    { "slti.u", SCI(0x1b, 0) }, { "slti.s", SCI(0x1b, 1) },
+    { "slei.u", SCI(0x1d, 0) }, { "slei.s", SCI(0x1d, 1) },
+
+    // Set Cond Register
+    { "seq", SCR(1) }, { "sne", SCR(2) },
+    { "sgt", SCR(3) }, { "sge", SCR(4) },
+    { "slt", SCR(5) }, { "sle", SCR(6) },
 
     // System
     { "syscall", SYS(0) },
@@ -483,12 +491,13 @@ uint32_t hv2a_get_operand_type(hv2a_t* as) {
 //#define IT_BLE1        0b11100
 #define IT_CPI          0b11110
 //#define IT_CPI1         0b11111
-#define IT_SEQ          0b10011
-#define IT_SNE          0b10101
-#define IT_SGT          0b10111
-#define IT_SGE          0b11001
-#define IT_SLT          0b11011
-#define IT_SLE          0b11101
+#define IT_SEQI         0b10011
+#define IT_SNEI         0b10101
+#define IT_SGTI         0b10111
+#define IT_SGEI         0b11001
+#define IT_SLTI         0b11011
+#define IT_SLEI         0b11101
+#define IT_SCR          0b01011
 
 struct operand_data_t {
     uint32_t mode = OPR_NONE;
@@ -984,9 +993,9 @@ uint32_t encode_instruction(mnemonic_data_t* md, operand_data_t* od, size_t* siz
             opcode |= (od->integer[1] & 0xffffff) << 4;
         } break;
 
-        case IT_SEQ: case IT_SNE:
-        case IT_SGT: case IT_SGE:
-        case IT_SLT: case IT_SLE: {
+        case IT_SEQI: case IT_SNEI:
+        case IT_SGTI: case IT_SGEI:
+        case IT_SLTI: case IT_SLEI: {
             if (od->mode != OPR_INT3) {
                 ERROR(E_INVALID_MODE, "Invalid mode %s for %s", operand_mode_name[od->mode].c_str(), md->mnemonic.c_str());
             }
@@ -995,6 +1004,17 @@ uint32_t encode_instruction(mnemonic_data_t* md, operand_data_t* od, size_t* siz
             opcode |= encode_s0(od->integer[1]);
             opcode |= (od->integer[2] & 0xffff) << 1;
             opcode |= md->sci_sx;
+        } break;
+
+        case IT_SCR: {
+            if (od->mode != OPR_INT3) {
+                ERROR(E_INVALID_MODE, "Invalid mode %s for %s", operand_mode_name[od->mode].c_str(), md->mnemonic.c_str());
+            }
+
+            opcode |= encode_d(od->integer[0]);
+            opcode |= encode_s0(od->integer[1]);
+            opcode |= encode_s1(od->integer[2]);
+            opcode |= md->scr_op << 2;
         } break;
     }
 
