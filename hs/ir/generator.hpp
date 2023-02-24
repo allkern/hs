@@ -374,8 +374,8 @@ namespace hs {
                 case EX_COMP_OP: {
                     comp_op_t* co = (comp_op_t*)expr;
 
-                    int rhs = generate_impl(bo->rhs, base, false, inside_fn);
-                    int lhs = generate_impl(bo->lhs, base + rhs, false, inside_fn);
+                    int rhs = generate_impl(co->rhs, base, false, inside_fn);
+                    int lhs = generate_impl(co->lhs, base + rhs, false, inside_fn);
                     
                     // To-do: Check this
                     append({IR_CMPR, co->op, "R" + std::to_string(base + rhs), "R" + std::to_string(base)});
@@ -392,7 +392,7 @@ namespace hs {
 
                         bo->lhs = aa->addr;
                         bo->rhs = aa->type_or_name;
-                        bo->bop = "+";
+                        bo->op = "+";
 
                         int a = generate_impl(bo, base, false, inside_fn);
 

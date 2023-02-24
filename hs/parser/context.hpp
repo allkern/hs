@@ -201,6 +201,13 @@ namespace hs {
                     contextualize_impl(bo->rhs);
                 } break;
 
+                case EX_COMP_OP: {
+                    comp_op_t* co = (comp_op_t*)expr;
+
+                    contextualize_impl(co->lhs);
+                    contextualize_impl(co->rhs);
+                } break;
+
                 case EX_EXPRESSION_BLOCK: {
                     expression_block_t* block = (expression_block_t*)expr;
 

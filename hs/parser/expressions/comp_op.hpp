@@ -21,7 +21,7 @@ namespace hs {
 #ifndef HS_AST_PRINT_FORMAT_LISP
             ss << "(comp-op: " << lhs->print(0) << ", " << rhs->print(0) << ")";
 #else
-            ss << "(" << bop << " " << lhs->print(0) << " " << rhs->print(0) << ")";
+            ss << "(" << op << " " << lhs->print(0) << " " << rhs->print(0) << ")";
 #endif
             return ss.str();
         }

@@ -95,12 +95,12 @@ namespace hs {
             cop_t cop = m_cop_map[cop_str];
 
             switch (cop) {
-                case CP_EQ: return "seq.u";
-                case CP_NE: return "sne.u";
-                case CP_GT: return "sgt.u";
-                case CP_GE: return "sge.u";
-                case CP_LT: return "slt.u";
-                case CP_LE: return "sle.u";
+                case CP_EQ: return "seq";
+                case CP_NE: return "sne";
+                case CP_GT: return "sgt";
+                case CP_GE: return "sge";
+                case CP_LT: return "slt";
+                case CP_LE: return "sle";
             }
 
             return "unimplemented_comp_operator";

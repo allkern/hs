@@ -303,8 +303,8 @@ namespace hs {
 
             m_current = m_input->get();
             
-            bop->lhs = lhs;
-            bop->rhs = parse_expression();
+            cop->lhs = lhs;
+            cop->rhs = parse_expression();
 
             return cop;
         }
