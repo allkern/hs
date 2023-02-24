@@ -1,0 +1,86 @@
+#define VGA_BUFFER_BASE   0xb8000
+#define VGA_BUFFER_END    0xc0000
+#define VGA_VT_X          0xbfffc
+#define VGA_VT_Y          0xbfff8
+#define VGA_BUFFER_WIDTH  80
+#define VGA_BUFFER_HEIGHT 25
+
+fn vga_write_char(x: int, y: int, ch: char, col: u8): asm {
+    li      x0, VGA_BUFFER_BASE
+    load.l  x1, arg_x
+    load.l  x2, arg_y
+    mul.u   x2, VGA_BUFFER_WIDTH
+    add.u   x1, x1, x2
+    load.l  x2, arg_ch
+    load.l  x3, arg_col
+    lsl.u   x3, 8
+    or      x2, x2, x3
+    store.s [x0, x1, 2], x2
+};
+
+fn vga_memcpy(dst: u32, src: u32, len: u32): {
+    while (len): {
+        [dst] = [src];
+
+        dst = dst + 1;
+        src = src + 1;
+        len = len - 1;
+    };
+};
+
+fn vga_memset(dst: u32, value: u8, len: u32): {
+    while (len): {
+        [dst] = value;
+
+        dst = dst + 1;
+        len = len - 1;
+    };
+};
+
+#define VGA_LINE_WIDTH 160
+
+fn vga_scroll(): {
+    int p = VGA_BUFFER_HEIGHT - 1;
+    int c = p + 1;
+
+    u32 paddr = VGA_BUFFER_BASE + (p * VGA_BUFFER_WIDTH);
+    u32 caddr = VGA_BUFFER_BASE + (c * VGA_BUFFER_WIDTH);
+
+    vga_memcpy(paddr, caddr, VGA_LINE_WIDTH);
+    vga_memset(caddr, 0, VGA_LINE_WIDTH);
+};
+
+fn vga_print(x: int, y: int, str: u32, col: u8): {
+    char c = [str] & 0xff;
+
+    while (c & 0xff): {
+        vga_write_char(x, y, c, col);
+
+        x = x + 1;
+
+        str = str + 1;
+
+        c = [str] & 0xff;
+    };
+};
+
+fn vga_vt_putchar(c: char): {
+    int vt_x = [VGA_VT_X];
+    int vt_y = [VGA_VT_Y];
+
+    if (vt_x == VGA_BUFFER_WIDTH): {
+        [VGA_VT_Y] = vt_y + 1;
+        [VGA_VT_X] = 0;
+    };
+
+    if (c == 0x0a): {
+        [VGA_VT_Y] = vt_y + 1;
+        [VGA_VT_X] = 0;
+
+        return 0;
+    };
+
+    vga_write_char([vt_x], [vt_y], [c], 0x07);
+    
+    [VGA_VT_X] = vt_x + 1;
+};
