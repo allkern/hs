@@ -30,7 +30,8 @@ namespace hs {
         EX_WHILE_LOOP,
         EX_ARRAY,
         EX_BLOB,
-        EX_IF_ELSE
+        EX_IF_ELSE,
+        EX_RETURN
     };
 
     class eval_t {

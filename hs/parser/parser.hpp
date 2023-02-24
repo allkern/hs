@@ -23,6 +23,7 @@
 #include "expressions/name_ref.hpp"
 #include "expressions/comp_op.hpp"
 #include "expressions/if_else.hpp"
+#include "expressions/return.hpp"
 #include "expressions/invoke.hpp"
 #include "expressions/array.hpp"
 #include "expressions/type.hpp"
@@ -70,7 +71,7 @@ namespace hs {
         expression_t* parse_expression_impl();
         expression_t* parse_expression();
 
-        expression_t* parse_function_definition() {
+        expression_t* parse_function_def() {
             if (m_current.type != LT_KEYWORD_FN) {
                 assert(false); // ??
             }
@@ -554,6 +555,22 @@ namespace hs {
             return whl;
         }
 
+        expression_t* parse_return() {
+            assert(m_current.type == LT_KEYWORD_RETURN);
+
+            return_expr_t* ret = new return_expr_t;
+
+            ret->line = m_current.line;
+            ret->offset = m_current.offset;
+            ret->len = m_current.text.size();
+
+            m_current = m_input->get();
+
+            ret->value = parse_expression();
+
+            return ret;
+        }
+
         expression_t* parse_array_access(expression_t* lhs) {
             array_access_t* access = new array_access_t;
 
@@ -754,11 +771,15 @@ hs::expression_t* hs::parser_t::parse_expression_impl() {
  
     switch (m_current.type) {
         case LT_KEYWORD_FN: {
-            expr = parse_function_definition();
+            expr = parse_function_def();
         } break;
 
         case LT_KEYWORD_WHILE: {
             expr = parse_while_loop();
+        } break;
+
+        case LT_KEYWORD_RETURN: {
+            expr = parse_return();
         } break;
 
         case LT_KEYWORD_ARRAY: {

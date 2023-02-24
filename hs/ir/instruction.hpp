@@ -35,7 +35,9 @@ namespace hs {
         IR_PASSTHROUGH, // Passthrough, will emit its first argument verbatim
         IR_NOP,         // NOP
         IR_DEBUG,       // Emit debug opcode (if any)
-        IR_ALIGN        // Emit align assembler directive
+        IR_ALIGN,       // Emit align assembler directive
+        IR_MISC_BEGIN_INDENT,
+        IR_MISC_END_INDENT
     };
 
     std::string m_ir_mnemonic_map[] = {
@@ -51,6 +53,7 @@ namespace hs {
         "DECSP",
         "CALLR",
         "CMPZB",
+        "CMPR",
         "PUSHR",
         "POPR",
         "LEAF",
@@ -69,7 +72,9 @@ namespace hs {
         "PASSTHROUGH",
         "NOP",
         "DEBUG",
-        "ALIGN"
+        "ALIGN",
+        "IR_MISC_BEGIN_INDENT",
+        "IR_MISC_END_INDENT"
     };
 
     struct ir_instruction_t {

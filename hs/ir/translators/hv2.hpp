@@ -151,13 +151,20 @@ namespace hs {
 
             for (std::vector <ir_instruction_t>& f : *m_ir) {
                 for (ir_instruction_t& i : f) {
-                    if (indented) ss << "    ";
+                    if (indented)
+                        ss << "    ";
 
                     switch (i.opcode) {
+                        case IR_MISC_BEGIN_INDENT: {
+                            indented = true;
+                        } break;
+
+                        case IR_MISC_END_INDENT: {
+                            indented = false;
+                        } break;
+
                         case IR_LABEL: {
                             ss << "\n" << fmt_label(i.args[0]) << ":";
-
-                            indented = true;
                         } break;
 
                         case IR_ADDSP: {
@@ -214,8 +221,6 @@ namespace hs {
 
                         case IR_RET: {
                             ss << "ret     r0";
-
-                            indented = false;
                         } break;
 
                         case IR_PASSTHROUGH: {

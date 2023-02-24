@@ -22,6 +22,8 @@ namespace hs {
 
         std::vector <std::vector <ir_instruction_t>> m_functions;
 
+        std::stack <function_def_t*> m_function_defs;
+
         int m_current_function = 0;
         
         std::stack <int> m_current_loops;
@@ -88,10 +90,11 @@ namespace hs {
             return blob_def.name;
         }
         
-        void begin_function() {
+        void begin_function(function_def_t* def) {
             m_current_loops.push(0);
 
             m_current_function++;
+            m_function_defs.push(def);
             m_functions.push_back(m_dummy);
         }
 
@@ -101,6 +104,7 @@ namespace hs {
 
         void end_function() {
             m_current_loops.pop();
+            m_function_defs.pop();
 
             m_current_function--;
         }
@@ -183,7 +187,7 @@ namespace hs {
                 case EX_FUNCTION_DEF: {
                     function_def_t* fd = (function_def_t*)expr;
 
-                    begin_function();
+                    begin_function(fd);
 
                     m_current_num_locals.push(0);
                     m_current_num_args.push(0);
@@ -191,6 +195,8 @@ namespace hs {
                     m_local_maps.push(m_dummy_local_map);
 
                     append({IR_LABEL, fd->name});
+
+                    append({IR_MISC_BEGIN_INDENT});
 
                     int arg_frame_pos = 1;
 
@@ -218,6 +224,7 @@ namespace hs {
 
                     generate_impl(fd->body, base, false, true);
 
+                    // Generate return
                     append({IR_MOV, "A0", "R" + std::to_string(base)});
 
                     if (m_current_num_locals.top()) {
@@ -229,6 +236,7 @@ namespace hs {
                     }
 
                     append({IR_RET});
+                    append({IR_MISC_END_INDENT});
 
                     end_function();
 
@@ -238,6 +246,22 @@ namespace hs {
                     m_local_maps.pop();
 
                     append({IR_MOVI, "R" + std::to_string(base), fd->name});
+
+                    return 1;
+                } break;
+
+                case EX_RETURN: {
+                    return_expr_t* re = (return_expr_t*)expr;
+
+                    generate_impl(re->value, base, false, true);
+
+                    append({IR_MOV, "A0", "R" + std::to_string(base)});
+
+                    if (m_current_num_locals.top()) {
+                        append({IR_ADDSP, std::to_string(m_current_num_locals.top() * 4)});
+                    }
+
+                    append({IR_RET});
 
                     return 1;
                 } break;
@@ -458,6 +482,7 @@ namespace hs {
             }
 
             m_functions.front().push_back({IR_LABEL, "<ENTRY>"});
+            m_functions.front().push_back({IR_MISC_BEGIN_INDENT});
 
             for (expression_t* expr : m_po->source) {
                 generate_impl(expr, 0);
@@ -474,6 +499,8 @@ namespace hs {
 
             // Debug program end software breakpoint
             m_functions.front().push_back({IR_DEBUG, "0xdeadc0de"});
+
+            m_functions.front().push_back({IR_MISC_END_INDENT});
 
             // Section padding
             m_functions.back().push_back({IR_NOP});

@@ -216,6 +216,12 @@ namespace hs {
                     }
                 } break;
 
+                case EX_RETURN: {
+                    return_expr_t* ret = (return_expr_t*)expr;
+
+                    contextualize_impl(ret->value);
+                } break;
+
                 case EX_ARRAY: {
                     array_t* arr = (array_t*)expr;
 
