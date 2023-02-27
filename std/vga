@@ -20,7 +20,12 @@ fn vga_write_char(x: int, y: int, ch: char, col: u8): asm {
 
 fn vga_memcpy(dst: u32, src: u32, len: u32): {
     while (len): {
-        [dst] = [src];
+        asm {
+            load.l  x10, arg_dst
+            load.l  x11, arg_src
+            load.b  x11, [x11]
+            store.b [x10], x11
+        };
 
         dst = dst + 1;
         src = src + 1;
@@ -29,25 +34,38 @@ fn vga_memcpy(dst: u32, src: u32, len: u32): {
 };
 
 fn vga_memset(dst: u32, value: u8, len: u32): {
-    while (len): {
-        [dst] = value;
-
-        dst = dst + 1;
-        len = len - 1;
+    while (len): asm {
+        load.l  x10, arg_dst
+        load.l  x11, arg_value
+        store.b [x10], x11
+        add.u   x10, 1
+        store.l arg_dst, x10
+        load.l  x10, arg_len
+        sub.u   x10, 1
+        store.l arg_len, x10
     };
 };
 
 #define VGA_LINE_WIDTH 160
 
 fn vga_scroll(): {
-    int p = VGA_BUFFER_HEIGHT - 1;
-    int c = p + 1;
+    u32 line = 1;
 
-    u32 paddr = VGA_BUFFER_BASE + (p * VGA_BUFFER_WIDTH);
-    u32 caddr = VGA_BUFFER_BASE + (c * VGA_BUFFER_WIDTH);
+    u32 paddr;
+    u32 caddr;
 
-    vga_memcpy(paddr, caddr, VGA_LINE_WIDTH);
-    vga_memset(caddr, 0, VGA_LINE_WIDTH);
+    while (line < VGA_BUFFER_HEIGHT): {
+        paddr = VGA_BUFFER_BASE + ((line - 1) * VGA_LINE_WIDTH);
+        caddr = VGA_BUFFER_BASE + (line * VGA_LINE_WIDTH);
+
+        vga_memcpy([paddr], [caddr], VGA_LINE_WIDTH);
+
+        line = line + 1;
+    };
+
+    u32 bottom = VGA_BUFFER_BASE + ((VGA_BUFFER_HEIGHT - 1) * VGA_LINE_WIDTH);
+
+    vga_memset([bottom], 0, VGA_LINE_WIDTH);
 };
 
 fn vga_print(x: int, y: int, str: u32, col: u8): {
@@ -64,18 +82,28 @@ fn vga_print(x: int, y: int, str: u32, col: u8): {
     };
 };
 
+fn vga_vt_newline(): {
+    int vt_y = [VGA_VT_Y];
+
+    if (vt_y == (VGA_BUFFER_HEIGHT - 1)): {
+        vga_scroll();
+    } else: {
+        [VGA_VT_Y] = [VGA_VT_Y] + 1;
+    };
+
+    [VGA_VT_X] = 0;
+};
+
 fn vga_vt_putchar(c: char): {
     int vt_x = [VGA_VT_X];
     int vt_y = [VGA_VT_Y];
 
     if (vt_x == VGA_BUFFER_WIDTH): {
-        [VGA_VT_Y] = vt_y + 1;
-        [VGA_VT_X] = 0;
+        vga_vt_newline();
     };
-
+    
     if (c == 0x0a): {
-        [VGA_VT_Y] = vt_y + 1;
-        [VGA_VT_X] = 0;
+        vga_vt_newline();
 
         return 0;
     };

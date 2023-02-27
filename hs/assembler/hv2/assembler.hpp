@@ -1100,18 +1100,16 @@ void hv2a_handle_org(hv2a_t* as) {
 void hv2a_handle_data(hv2a_t* as, int s) {
     int bytes = 1 << (s - 1);
 
-    as->pos += bytes;
-    as->vaddr += bytes;
-
-    if (as->pass != 1)
-        return;
-
     while (!as->stream->eof()) {
         uint32_t v = hv2a_parse_integer(as);
 
         v &= 0xffffffff >> (32 - (bytes * 8));
 
-        as->output->write((char*)&v, bytes);
+        as->pos += bytes;
+        as->vaddr += bytes;
+
+        if (as->pass == 1)
+            as->output->write((char*)&v, bytes);
 
         while (std::isspace(as->c))
             as->c = as->stream->get();
@@ -1587,7 +1585,7 @@ void hv2a_encode_pseudo_op(hv2a_t* as, mnemonic_data_t* md, operand_data_t* od) 
         case PSD_RET: {
             PUSH("add.u     sp, 4");
             PUSH("load.l    at, [sp-4]");
-            // PUSH("sub.u     at, %u", hv2a_get_pipeline_offset(as));
+            PUSH("add.u     at, 4");
             PUSH("move      pc, at");
         } break;
 
