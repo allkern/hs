@@ -2,6 +2,10 @@
 #define VGA_BUFFER_END    0xc0000
 #define VGA_VT_X          0xbfffc
 #define VGA_VT_Y          0xbfff8
+#define VGA_VT_SX         0xbfff4
+#define VGA_VT_SY         0xbfff0
+#define VGA_VT_C          0xbffec
+#define VGA_VT_SC         0xbffe8
 #define VGA_BUFFER_WIDTH  80
 #define VGA_BUFFER_HEIGHT 25
 
@@ -68,6 +72,30 @@ fn vga_scroll(): {
     vga_memset([bottom], 0, VGA_LINE_WIDTH);
 };
 
+fn vga_set_color(bg: u8, fg: u8): {
+    [VGA_VT_SC] = [VGA_VT_C];
+    [VGA_VT_C] = (bg << 4) | fg;
+};
+
+fn vga_restore_color(): {
+    [VGA_VT_C] = [VGA_VT_SC];
+};
+
+fn vga_clear(ptr: u32, col: u32): {
+    ptr = VGA_BUFFER_BASE;
+    col = [VGA_VT_C] << 8;
+
+    while (ptr <= 0xb9000): {
+        asm {
+            load.l  x0, arg_ptr
+            load.l  x1, arg_col
+            store.s [x0], x1
+        };
+
+        ptr = ptr + 2;
+    };
+};
+
 fn vga_print(x: int, y: int, str: u32, col: u8): {
     char c = [str] & 0xff;
 
@@ -111,4 +139,8 @@ fn vga_vt_putchar(c: char): {
     vga_write_char([vt_x], [vt_y], [c], 0x07);
     
     [VGA_VT_X] = vt_x + 1;
+};
+
+fn vga_vt_print(str: u32, fg: u8): {
+
 };

@@ -21,6 +21,7 @@
 #include "expressions/asm_block.hpp"
 #include "expressions/binary_op.hpp"
 #include "expressions/name_ref.hpp"
+#include "expressions/unary_op.hpp"
 #include "expressions/comp_op.hpp"
 #include "expressions/if_else.hpp"
 #include "expressions/return.hpp"
@@ -68,13 +69,11 @@ namespace hs {
             return types.contains(ident) || type_aliases.contains(ident); 
         }
 
-        expression_t* parse_expression_impl();
-        expression_t* parse_expression();
+        //expression_t* parse_expression_impl();
+        //expression_t* parse_expression();
 
         expression_t* parse_function_def() {
-            if (m_current.type != LT_KEYWORD_FN) {
-                assert(false); // ??
-            }
+            assert(m_current.type == LT_KEYWORD_FN);
 
             function_def_t* def = new function_def_t;
 
@@ -728,33 +727,258 @@ namespace hs {
             return &m_output;
         }
 
-        bool parse() {
-            expression_t* lhs;
-            expression_t* op;
+        hs::expression_t* parse_expression_impl() {
+            hs::expression_t* expr;
+        
+            switch (m_current.type) {
+                case LT_KEYWORD_FN: {
+                    expr = parse_function_def();
+                } break;
 
-            m_current = m_input->get();
+                case LT_KEYWORD_WHILE: {
+                    expr = parse_while_loop();
+                } break;
 
-            while (m_current.type != LT_NONE) {
-                lhs = parse_expression();
+                case LT_KEYWORD_RETURN: {
+                    expr = parse_return();
+                } break;
 
-                do {
-                    op = parse_rightside_operation(lhs);
+                case LT_KEYWORD_ARRAY: {
+                    expr = parse_array();
+                } break;
 
-                    if (op) lhs = op;
-                } while (op);
+                case LT_KEYWORD_BLOB: {
+                    expr = parse_blob();
+                } break;
 
-                // Handle ; thing
-                if (lhs == (expression_t*)10) {
+                case LT_KEYWORD_IF: {
+                    expr = parse_if_else();
+                } break;
+
+                case LT_LITERAL_NUMERIC: {
+                    expr = parse_numeric_literal();
+                } break;
+
+                case LT_LITERAL_STRING: {
+                    expr = parse_string_literal();
+                } break;
+
+                case LT_KEYWORD_INVOKE: {
+                    expr = parse_invoke();
+                } break;
+
+                case LT_OPENING_BRACKET: {
+                    type_t* none = new type_t;
+
+                    none->line = m_current.line;
+                    none->offset = m_current.offset;
+                    none->len = m_current.text.size();
+
+                    none->type = "none";
+
                     m_current = m_input->get();
 
-                    continue;
+                    expr = parse_array_access(none);
+                } break;
+
+                case LT_IDENT: {
+                    bool type = is_type(m_current.text);
+
+                    if (type) {
+                        std::string type = m_current.text;
+
+                        m_current = m_input->get();
+
+                        if (m_current.type == LT_IDENT) {
+                            variable_def_t* var = new variable_def_t;
+
+                            var->line = m_current.line;
+                            var->offset = m_current.offset;
+                            var->len = m_current.text.size();
+
+                            var->type = type;
+                            var->name = m_current.text;
+
+                            expr = var;
+
+                            m_current = m_input->get();
+                        } else {
+                            type_t* type_expr = new type_t;
+
+                            type_expr->line = m_current.line;
+                            type_expr->offset = m_current.offset;
+                            type_expr->len = m_current.text.size();
+
+                            type_expr->type = type;
+
+                            expr = type_expr;
+                        }
+                    } else {
+                        name_ref_t* name = new name_ref_t;
+
+                        name->line = m_current.line;
+                        name->offset = m_current.offset;
+                        name->len = m_current.text.size();
+
+                        name->name = m_current.text;
+
+                        expr = name;
+
+                        m_current = m_input->get();
+                    }
+                } break;
+
+                case LT_OPENING_BRACE: {
+                    expr = parse_expression_block();
+                } break;
+
+                case LT_ASM_BLOCK: {
+                    expr = parse_asm_block();
+                } break;
+
+                case LT_SEMICOLON: {
+                    return (hs::expression_t*)10;
+                } break;
+
+                default: {
+                    ERROR(fmt("Unhandled token \"" ESCAPE(37;1) "%s" ESCAPE(0) "\"", m_current.text.c_str()));
+
+                    expr = nullptr;
+                };
+            }
+
+            return expr;
+        }
+
+        expression_t* parse_rhs(expression_t* lhs) {
+            expression_t* expr = lhs;
+
+            if (m_current.type == LT_OPERATOR_UNARY) {
+                unary_op_t* uo = new unary_op_t;
+
+                uo->op = m_current.text;
+                uo->post = true;
+                uo->operand = lhs;
+
+                std::printf("post uo->op=%s, uo->post=%u, uo->operand=%p\n", uo->op.c_str(), uo->post, uo->operand);
+
+                m_current = m_input->get();
+
+                expr = uo;
+            }
+
+            if ((m_current.type == LT_OPERATOR_BINARY) || (m_current.type == LT_STAR) || (m_current.type == LT_AMPERSAND)) {
+                binary_op_t* bo = new binary_op_t;
+
+                bo->op = m_current.text;
+                bo->lhs = lhs;
+
+                m_current = m_input->get();
+
+                bo->rhs = parse_expression();
+
+                expr = bo;
+            }
+
+            if (m_current.type == LT_OPERATOR_COMP) {
+                comp_op_t* co = new comp_op_t;
+
+                co->op = m_current.text;
+                co->lhs = lhs;
+
+                m_current = m_input->get();
+
+                co->rhs = parse_expression();
+
+                expr = co;
+            }
+
+            if (m_current.type == LT_OPERATOR_ASSIGN) {
+                assignment_t* as = new assignment_t;
+
+                as->assignee = lhs;
+                as->op = m_current.text;
+
+                m_current = m_input->get();
+
+                as->value = parse_expression();
+
+                expr = as;
+            }
+
+            if (m_current.type == LT_OPENING_PARENT) {
+                function_call_t* fc = new function_call_t;
+
+                m_current = m_input->get();
+
+                expr = parse_function_call(lhs);
+            }
+
+            if (m_current.type == LT_OPENING_BRACKET) {
+                array_access_t* aa = new array_access_t;
+
+                m_current = m_input->get();
+
+                expr = parse_array_access(lhs);
+            }
+
+            return expr;
+        }
+
+        expression_t* parse_expression() {
+            expression_t* expr = nullptr;
+
+            bool parenthesized = m_current.type == LT_OPENING_PARENT;
+
+            if (parenthesized) {
+                m_current = m_input->get();
+
+                expr = parse_expression();
+
+                if (m_current.type != LT_CLOSING_PARENT) {
+                    ERROR("Expected ')'");
                 }
 
-                if (lhs) {
-                    m_output.source.push_back(lhs);
+                m_current = m_input->get();
 
-                    //_log(debug, "expression:\n%s", lhs->print(0).c_str());
+                expr = parse_rhs(expr);
+            } else {
+                if (m_current.type == LT_OPERATOR_UNARY) {
+                    unary_op_t* uo = new unary_op_t;
+
+                    uo->op = m_current.text;
+                    uo->post = false;
+
+                    m_current = m_input->get();
+
+                    uo->operand = parse_expression();
+
+                    std::printf("pre uo->op=%s, uo->post=%u, uo->operand=%p\n", uo->op.c_str(), uo->post, uo->operand);
+
+                    expr = uo;
                 } else {
+                    expr = parse_expression_impl();
+                }
+
+                expr = parse_rhs(expr);
+            }
+
+            return expr;
+        }
+
+        bool parse() {
+            m_current = m_input->get();
+
+            while (!m_input->eof()) {
+                m_output.source.push_back(parse_expression());
+
+                if (m_current.type != LT_SEMICOLON) {
+                    if (m_logger) m_logger->print_error(
+                        "parser",
+                        "Expected \';\' after expression",
+                        m_current.line, m_current.offset, m_current.text.size()
+                    );
+                    
                     return false;
                 }
 
@@ -764,164 +988,6 @@ namespace hs {
             return true;
         }
     };
-}
-
-hs::expression_t* hs::parser_t::parse_expression_impl() {
-    hs::expression_t* expr;
- 
-    switch (m_current.type) {
-        case LT_KEYWORD_FN: {
-            expr = parse_function_def();
-        } break;
-
-        case LT_KEYWORD_WHILE: {
-            expr = parse_while_loop();
-        } break;
-
-        case LT_KEYWORD_RETURN: {
-            expr = parse_return();
-        } break;
-
-        case LT_KEYWORD_ARRAY: {
-            expr = parse_array();
-        } break;
-
-        case LT_KEYWORD_BLOB: {
-            expr = parse_blob();
-        } break;
-
-        case LT_KEYWORD_IF: {
-            expr = parse_if_else();
-        } break;
-
-        case LT_LITERAL_NUMERIC: {
-            expr = parse_numeric_literal();
-        } break;
-
-        case LT_LITERAL_STRING: {
-            expr = parse_string_literal();
-        } break;
-
-        case LT_KEYWORD_INVOKE: {
-            expr = parse_invoke();
-        } break;
-
-        case LT_OPENING_BRACKET: {
-            type_t* none = new type_t;
-
-            none->line = m_current.line;
-            none->offset = m_current.offset;
-            none->len = m_current.text.size();
-
-            none->type = "none";
-
-            m_current = m_input->get();
-
-            expr = parse_array_access(none);
-        } break;
-
-        case LT_IDENT: {
-            bool type = is_type(m_current.text);
-
-            if (type) {
-                std::string type = m_current.text;
-
-                m_current = m_input->get();
-
-                if (m_current.type == LT_IDENT) {
-                    variable_def_t* var = new variable_def_t;
-
-                    var->line = m_current.line;
-                    var->offset = m_current.offset;
-                    var->len = m_current.text.size();
-
-                    var->type = type;
-                    var->name = m_current.text;
-
-                    expr = var;
-
-                    m_current = m_input->get();
-                } else {
-                    type_t* type_expr = new type_t;
-
-                    type_expr->line = m_current.line;
-                    type_expr->offset = m_current.offset;
-                    type_expr->len = m_current.text.size();
-
-                    type_expr->type = type;
-
-                    expr = type_expr;
-                }
-            } else {
-                name_ref_t* name = new name_ref_t;
-
-                name->line = m_current.line;
-                name->offset = m_current.offset;
-                name->len = m_current.text.size();
-
-                name->name = m_current.text;
-
-                expr = name;
-
-                m_current = m_input->get();
-            }
-        } break;
-
-        case LT_OPENING_BRACE: {
-            expr = parse_expression_block();
-        } break;
-
-        case LT_ASM_BLOCK: {
-            expr = parse_asm_block();
-        } break;
-
-        case LT_SEMICOLON: {
-            return (hs::expression_t*)10;
-        } break;
-
-        default: {
-            ERROR(fmt("Unhandled token \"" ESCAPE(37;1) "%s" ESCAPE(0) "\"", m_current.text.c_str()));
-
-            expr = nullptr;
-        };
-    }
-
-    return expr;
-}
-
-hs::expression_t* hs::parser_t::parse_expression() {
-    expression_t* lhs;
-    expression_t* op;
-
-    bool parenthesized = m_current.type == LT_OPENING_PARENT;
-
-    if (parenthesized) {
-        parenthesized = true;
-
-        m_current = m_input->get();
-
-        lhs = hs::parser_t::parse_expression();
-    } else {
-        lhs = hs::parser_t::parse_expression_impl();
-    }
-
-    do {
-        op = parse_rightside_operation(lhs);
-
-        if (op) lhs = op;
-    } while (op);
-    
-    if (parenthesized) {
-        if (m_current.type != LT_CLOSING_PARENT) {
-            ERROR("Expected \'" ESCAPE(37;1) ")" ESCAPE(0)"\'");
-
-            return nullptr;
-        } else {
-            m_current = m_input->get();
-        }
-    }
-
-    return lhs;
 }
 
 #undef ERROR

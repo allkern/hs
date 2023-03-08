@@ -456,7 +456,7 @@ namespace hs {
                     return MATCH;
                 } break;
 
-                case '~': SINGLE('~'); m_current_token.type = LT_OPERATOR_UNARY ; return MATCH;
+                case '~': SINGLE('~'); m_current_token.type = LT_OPERATOR_UNARY; return MATCH;
             }
 
             return NO_MATCH;

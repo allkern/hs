@@ -58,6 +58,8 @@ namespace hs {
         }
 
         void contextualize_impl(expression_t* expr) {
+            // _log(debug, "contextualizing:\n%s", expr->print(0).c_str());
+
             switch (expr->get_type()) {
                 case EX_FUNCTION_DEF: {
                     function_def_t* fd = (function_def_t*)expr;
@@ -180,6 +182,12 @@ namespace hs {
                     }
                 } break;
 
+                case EX_UNARY_OP: {
+                    unary_op_t* uo = (unary_op_t*)expr;
+
+                    contextualize_impl(uo->operand);
+                } break;
+
                 case EX_ARRAY_ACCESS: {
                     array_access_t* aa = (array_access_t*)expr;
 
@@ -284,8 +292,6 @@ namespace hs {
         void contextualize() {
             for (expression_t* expr : m_po->source) {
                 contextualize_impl(expr);
-
-                // _log(debug, "expression:\n%s", expr->print(0).c_str());
             }
         }
     };

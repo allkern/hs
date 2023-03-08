@@ -31,7 +31,7 @@ namespace hs {
             return "unimplemented_register";
         }
 
-        enum bop_t {
+        enum alu_op_t {
             BP_ADD,
             BP_SUB,
             BP_MUL,
@@ -40,7 +40,11 @@ namespace hs {
             BP_OR,
             BP_XOR,
             BP_SHL,
-            BP_SHR
+            BP_SHR,
+            UP_INC,
+            UP_DEC,
+            UP_NOT,
+            UP_NEG
         };
 
         enum cop_t {
@@ -52,7 +56,7 @@ namespace hs {
             CP_LE
         };
 
-        std::unordered_map <std::string, bop_t> m_bop_map = {
+        std::unordered_map <std::string, alu_op_t> m_alu_map = {
             { "+" , BP_ADD },
             { "-" , BP_SUB },
             { "*" , BP_MUL },
@@ -73,10 +77,10 @@ namespace hs {
             { "<=", CP_LE }
         };
 
-        std::string map_binary_op(std::string bop_str) {
-            bop_t bop = m_bop_map[bop_str];
+        std::string map_alu_op(std::string op_str) {
+            alu_op_t op = m_alu_map[op_str];
 
-            switch (bop) {
+            switch (op) {
                 case BP_ADD: return "add.u";
                 case BP_SUB: return "sub.u";
                 case BP_MUL: return "mul.u";
@@ -172,7 +176,20 @@ namespace hs {
                         } break;
 
                         case IR_ALU: {
-                            ss << map_binary_op(i.args[0]) << "   " << map_register(i.args[1]) << ", " << map_register(i.args[1]) << ", " << map_register(i.args[2]);
+                            ss << map_alu_op(i.args[0]) << "   " << map_register(i.args[1]) << ", " << map_register(i.args[1]) << ", " << map_register(i.args[2]);
+                        } break;
+
+                        case IR_UNARY: {
+                            if (i.args[0] == "++") {
+                                ss << "add.u   " << map_register(i.args[1]) << ", 1";
+                            } else if (i.args[0] == "--") {
+                                ss << "sub.u   " << map_register(i.args[1]) << ", 1";
+                            } else if (i.args[0] == "!") {
+                                ss << "xor.s   " << map_register(i.args[1]) << ", 0xffff\n";
+                                ss << "and.u   " << map_register(i.args[1]) << ", 1";
+                            } else if (i.args[0] == "~") {
+                                ss << "xor.s   " << map_register(i.args[1]) << ", 0xffff";
+                            }
                         } break;
 
                         case IR_CALLR: {

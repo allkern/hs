@@ -44,7 +44,6 @@ namespace hs {
         std::vector <array_t> m_pending_arrays;
         std::vector <blob_def_t> m_pending_blobs;
 
-
         struct variable_t {
             int address;
 
@@ -121,6 +120,10 @@ namespace hs {
             m_logger = logger;
 
             m_functions.resize(1);
+        }
+
+        inline std::string reg(int number) {
+            return "R" + std::to_string(number);
         }
 
         uint32_t generate_impl(expression_t* expr, int base, bool pointer = false, bool inside_fn = false) {
@@ -248,6 +251,51 @@ namespace hs {
                     append({IR_MOVI, "R" + std::to_string(base), fd->name});
 
                     return 1;
+                } break;
+
+                case EX_UNARY_OP: {
+                    unary_op_t* uo = (unary_op_t*)expr;
+
+                    if (uo->post) {
+                        if (uo->op == "++" || uo->op == "--") {
+                            int temp = base;
+                            int addr = base + 1;
+                            int addr_regcount = generate_impl(uo->operand, addr, true, inside_fn);
+                            int value = addr + addr_regcount;
+                            append({IR_LOADR, reg(temp), reg(addr)});
+                            append({IR_MOV, reg(value), reg(temp)});
+                            append({IR_UNARY, uo->op, reg(value)});
+                            append({IR_STORE, reg(addr), reg(value)});
+
+                            return 2 + addr_regcount;
+                        } else {
+                            int addr = base;
+                            int addr_regcount = generate_impl(uo->operand, addr, true, inside_fn);
+                            int value = addr + addr_regcount;
+                            append({IR_LOADR, reg(value), reg(addr)});
+                            append({IR_UNARY, uo->op, reg(value)});
+                            append({IR_STORE, reg(addr), reg(value)});
+                            append({IR_LOADR, reg(addr), reg(addr)});
+
+                            return 1 + addr_regcount;
+                        }
+                    } else {
+                        if (uo->op == "++" || uo->op == "--") {
+                            int addr = base;
+                            int addr_regcount = generate_impl(uo->operand, addr, true, inside_fn);
+                            int value = addr + addr_regcount;
+                            append({IR_LOADR, reg(value), reg(addr)});
+                            append({IR_UNARY, uo->op, reg(value)});
+                            append({IR_STORE, reg(addr), reg(value)});
+
+                            return 1 + addr_regcount;
+                        } else {
+                            generate_impl(uo->operand, base, false, inside_fn);
+                            append({IR_UNARY, uo->op, reg(base)});
+
+                            return 1;
+                        }
+                    }
                 } break;
 
                 case EX_RETURN: {

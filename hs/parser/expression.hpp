@@ -16,6 +16,7 @@ namespace hs {
         EX_ARRAY_ACCESS,
         EX_ASSIGNMENT,
         EX_BINARY_OP,
+        EX_UNARY_OP,
         EX_COMP_OP,
         EX_EXPRESSION_BLOCK,
         EX_FUNCTION_CALL,

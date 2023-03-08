@@ -18,6 +18,7 @@ namespace hs {
         IR_CMPZB,       // Compare register with 0 and branch
         IR_CMPR,        // Compare registers
         IR_PUSHR,       // Push register
+        IR_UNARY,       // Unary operation register
         IR_POPR,        // Pop register
         IR_LEAF,        // Push register
         IR_RET,         // Return from subroutine
@@ -55,6 +56,7 @@ namespace hs {
         "CMPZB",
         "CMPR",
         "PUSHR",
+        "UNARY",
         "POPR",
         "LEAF",
         "RET",
