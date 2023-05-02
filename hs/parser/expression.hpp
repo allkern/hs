@@ -2,6 +2,8 @@
 
 #include <string>
 
+#include "type_system.hpp"
+
 #define HS_AST_PRINT_FORMAT_LISP
 #define HS_AST_PRINT_INDENT_SIZE 2
 
@@ -14,6 +16,7 @@ namespace hs {
     enum expression_type_t {
         EX_NONE,
         EX_ARRAY_ACCESS,
+        EX_RAW_MEMORY_ACCESS,
         EX_ASSIGNMENT,
         EX_BINARY_OP,
         EX_COMP_OP,
@@ -46,6 +49,7 @@ namespace hs {
 
         virtual std::string print(int hierarchy) { return "<undefined>"; };
         virtual eval_t eval() { return eval_t(); };
-        virtual expression_type_t get_type() { return EX_NONE; };
+        virtual expression_type_t get_expr_type() { return EX_NONE; };
+        virtual hs_type_t* get_hs_type() { return nullptr; }
     };
 }

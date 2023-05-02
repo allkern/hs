@@ -42,7 +42,9 @@ namespace hs {
         LT_KEYWORD_STRUCT,
         LT_KEYWORD_TYPE,
         LT_KEYWORD_BLOB,
-        LT_ASM_BLOCK,
+        LT_KEYWORD_MUT,
+        LT_KEYWORD_STATIC,
+        LT_ASM_BLOCK
     };
 
     std::unordered_map <std::string, lexer_token_type_t> keyword_map = {
@@ -60,7 +62,9 @@ namespace hs {
         { "range"   , LT_KEYWORD_RANGE   },
         { "struct"  , LT_KEYWORD_STRUCT  },
         { "blob"    , LT_KEYWORD_BLOB    },
-        { "type"    , LT_KEYWORD_TYPE    }
+        { "type"    , LT_KEYWORD_TYPE    },
+        { "mut"     , LT_KEYWORD_MUT     },
+        { "static"  , LT_KEYWORD_STATIC  }
     };
 
     std::string lexer_token_type_names[] = {
@@ -101,7 +105,52 @@ namespace hs {
         "LT_KEYWORD_STRUCT",
         "LT_KEYWORD_TYPE",
         "LT_KEYWORD_BLOB",
+        "LT_KEYWORD_MUT",
+        "LT_KEYWORD_STATIC",
         "LT_ASM_BLOCK"
+    };
+
+    const char* lexer_token_hr_names[] = {
+        "none",
+        "identifier",
+        "literal",
+        "numeric-literal",
+        "string-literal",
+        "\'(\'",
+        "\')\'",
+        "\'{\'",
+        "\'}\'",
+        "\'[\'",
+        "\']\'",
+        "\':\'",
+        "\';\'",
+        "\'->\'",
+        "\',\'",
+        "\'.\'",
+        "\'*\'",
+        "\'&\'",
+        "assignment-operator",
+        "comparison-operator",
+        "binary-operator",
+        "unary-operator",
+        "fn",
+        "return",
+        "const",
+        "generic",
+        "for",
+        "if",
+        "else",
+        "while",
+        "do",
+        "invoke",
+        "array",
+        "range",
+        "struct",
+        "type",
+        "blob",
+        "mut",
+        "static",
+        "asm-block"
     };
 
     struct lexer_token_t {

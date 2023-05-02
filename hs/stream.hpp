@@ -39,6 +39,14 @@ namespace hs {
             m_buf.push_back(data);
         }
 
+        size_t tellg() {
+            return m_pos;
+        }
+
+        void seekg(size_t pos) {
+            m_pos = pos;
+        }
+
         T& get() {
             if (this->eof()) return m_dummy;
 

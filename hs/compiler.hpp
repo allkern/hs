@@ -328,11 +328,11 @@ namespace hs {
         }
 
         bool compile() {
-            m_logger.init(m_input, m_filename);
-
             if (m_cli.get_switch(SW_ASSEMBLE)) {
                 m_aspp.init(m_input, &m_include_paths, m_system_include, &m_logger);
                 m_aspp.preprocess();
+
+                m_logger.init(m_aspp.get_output(), m_filename);
 
                 m_assembler->init(m_aspp.get_output(), m_output, &m_logger, &m_cli);
                 m_assembler->assemble();
@@ -342,6 +342,8 @@ namespace hs {
             
             m_hspp.init(m_input, &m_include_paths, m_system_include, &m_logger);
             m_hspp.preprocess();
+
+            m_logger.init(m_hspp.get_output(), m_filename);
 
             m_lexer.init(m_hspp.get_output(), &m_logger);
             m_lexer.lex();
@@ -397,6 +399,7 @@ namespace hs {
             }
 
             m_translator->init(&m_irg, &m_logger);
+
             std::string assembly = m_translator->translate();
 
             if (m_cli.get_switch(SW_DEBUG_IRT_OUTPUT) || m_cli.get_switch(SW_DEBUG_ALL)) {
@@ -409,6 +412,8 @@ namespace hs {
 
             m_aspp.init(&assembly_stream, &m_include_paths, m_system_include, &m_logger);
             m_aspp.preprocess();
+
+            m_logger.init(m_aspp.get_output(), m_filename);
 
             m_assembler->init(m_aspp.get_output(), m_output, &m_logger, &m_cli);
             m_assembler->assemble();

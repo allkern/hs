@@ -21,8 +21,12 @@ namespace hs {
             return ss.str();
         }
 
-        expression_type_t get_type() override {
+        expression_type_t get_expr_type() override {
             return EX_BLOB;
+        }
+        
+        hs_type_t* get_hs_type() override {
+            return nullptr; /* To-do */
         }
     };
 }

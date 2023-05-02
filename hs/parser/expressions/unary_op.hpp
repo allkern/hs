@@ -5,29 +5,31 @@
 
 #include <string>
 #include <sstream>
+#include <iomanip>
 
 namespace hs {
-    struct while_loop_t : public expression_t {
-        expression_t* condition = nullptr;
-        expression_t* body = nullptr;
+    struct unary_op_t : public expression_t {
+        bool post = false;
+        std::string op;
+        expression_t* operand = nullptr;
 
         std::string print(int hierarchy) override {
             std::ostringstream ss;
 
-            ss << std::string(hierarchy, ' ');
+            ss << std::string(hierarchy * HS_AST_PRINT_INDENT_SIZE, ' ');
 
 #ifndef HS_AST_PRINT_FORMAT_LISP
-            ss << "(while-loop: condition=" << condition->print(0) << ")"; 
+            ss << "(unary-op: " << op << operand->print(0) << ")";
 #else
-            ss << "(while " << condition->print(0) << ")"; 
+            ss << "(" << op << " " << operand->print(0) << ")";
 #endif
             return ss.str();
         }
 
         expression_type_t get_expr_type() override {
-            return EX_WHILE_LOOP;
+            return EX_UNARY_OP;
         }
-        
+
         hs_type_t* get_hs_type() override {
             return nullptr; /* To-do */
         }

@@ -548,10 +548,8 @@ namespace hs {
 
 #define TRY_LEX(lt) \
     r = try_lex_##lt(); \
-\
     if (r.status == ST_MATCH) { \
         m_output.put(m_current_token); \
-\
         continue; \
     } \
     if (r.status == ST_ERROR) { \
@@ -560,7 +558,6 @@ namespace hs {
             r.error, \
             r.line, r.offset, 1 \
         ); \
-\
         return; \
     }
 

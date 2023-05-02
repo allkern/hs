@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../expression.hpp"
-#include "type.hpp"
+#include "../type_system.hpp"
 
 #include <string>
 #include <sstream>
@@ -25,8 +25,12 @@ namespace hs {
             return ss.str();
         }
 
-        expression_type_t get_type() override {
+        expression_type_t get_expr_type() override {
             return EX_IF_ELSE;
+        }
+        
+        hs_type_t* get_hs_type() override {
+            return nullptr; /* To-do */
         }
     };
 }

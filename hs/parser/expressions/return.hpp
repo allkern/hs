@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../expression.hpp"
-#include "type.hpp"
+#include "../type_system.hpp"
 
 namespace hs {
     struct return_expr_t : public expression_t {
@@ -20,8 +20,12 @@ namespace hs {
             return ss.str();
         }
 
-        expression_type_t get_type() override {
+        expression_type_t get_expr_type() override {
             return EX_RETURN;
+        }
+        
+        hs_type_t* get_hs_type() override {
+            return nullptr; /* To-do */
         }
     };
 }

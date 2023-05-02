@@ -1,0 +1,68 @@
+array-access:
+identifier [expr]
+
+array:
+array [type] { expr, expr, ... }
+array [type, expr] { expr, expr, ... }
+
+asm_block:
+asm { ... }
+
+assignment:
+expr = expr
+expr B= expr
+
+binary-op:
+expr B expr
+
+blob:
+blob string
+
+comp-op:
+expr C expr
+
+expression-block:
+{ expr; expr; ... }
+
+function-call:
+expr(expr, expr ...)
+
+function-def:
+fn: expr
+fn name: expr
+fn (arg-list): expr
+fn -> type: expr
+fn name(arg-list): expr
+fn name -> type: expr
+fn (arg-list) -> type: expr
+
+if-else:
+if (expr): expr
+if (expr): expr else: expr
+
+invoke: Unimplemented
+
+name-ref:
+identifier
+
+numeric-literal:
+number
+
+raw-memory-access:
+type [expr]
+
+return:
+return expr
+
+string-literal:
+string
+
+unary-op:
+U expr
+expr U
+
+variable-def:
+type identifier
+
+while-loop:
+while (expr): expr

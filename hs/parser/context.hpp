@@ -58,7 +58,13 @@ namespace hs {
         }
 
         void contextualize_impl(expression_t* expr) {
+<<<<<<< Updated upstream
             switch (expr->get_type()) {
+=======
+            // _log(debug, "contextualizing:\n%s", expr->print(0).c_str());
+
+            switch (expr->get_expr_type()) {
+>>>>>>> Stashed changes
                 case EX_FUNCTION_DEF: {
                     function_def_t* fd = (function_def_t*)expr;
 

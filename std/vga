@@ -10,7 +10,7 @@ fn vga_write_char(x: int, y: int, ch: char, col: u8): asm {
     load.l  x1, arg_x
     load.l  x2, arg_y
     mul.u   x2, VGA_BUFFER_WIDTH
-    add.u   x1, x1, x2
+    add     x1, x1, x2
     load.l  x2, arg_ch
     load.l  x3, arg_col
     lsl.u   x3, 8
@@ -19,31 +19,37 @@ fn vga_write_char(x: int, y: int, ch: char, col: u8): asm {
 };
 
 fn vga_memcpy(dst: u32, src: u32, len: u32): {
-    while (len): {
-        asm {
-            load.l  x10, arg_dst
-            load.l  x11, arg_src
-            load.b  x11, [x11]
-            store.b [x10], x11
-        };
+    while (len--):
+        [dst++] = [src++];
 
-        dst = dst + 1;
-        src = src + 1;
-        len = len - 1;
-    };
+    # while (len): {
+    #     asm {
+    #         load.l  x10, arg_dst
+    #         load.l  x11, arg_src
+    #         load.b  x11, [x11]
+    #         store.b [x10], x11
+    #     };
+
+    #     dst++;
+    #     src++;
+    #     len--;
+    # };
 };
 
 fn vga_memset(dst: u32, value: u8, len: u32): {
-    while (len): asm {
-        load.l  x10, arg_dst
-        load.l  x11, arg_value
-        store.b [x10], x11
-        add.u   x10, 1
-        store.l arg_dst, x10
-        load.l  x10, arg_len
-        sub.u   x10, 1
-        store.l arg_len, x10
-    };
+    while (len--):
+        [dst++] = value;
+
+    # while (len): asm {
+    #     load.l  x10, arg_dst
+    #     load.l  x11, arg_value
+    #     store.b [x10], x11
+    #     add.u   x10, 1
+    #     store.l arg_dst, x10
+    #     load.l  x10, arg_len
+    #     sub.u   x10, 1
+    #     store.l arg_len, x10
+    # };
 };
 
 #define VGA_LINE_WIDTH 160
@@ -60,7 +66,7 @@ fn vga_scroll(): {
 
         vga_memcpy([paddr], [caddr], VGA_LINE_WIDTH);
 
-        line = line + 1;
+        line++;
     };
 
     u32 bottom = VGA_BUFFER_BASE + ((VGA_BUFFER_HEIGHT - 1) * VGA_LINE_WIDTH);
@@ -68,6 +74,33 @@ fn vga_scroll(): {
     vga_memset([bottom], 0, VGA_LINE_WIDTH);
 };
 
+<<<<<<< Updated upstream
+=======
+fn vga_set_color(bg: u8, fg: u8): {
+    [VGA_VT_SC] = [VGA_VT_C];
+    [VGA_VT_C] = (bg << 4) | fg;
+};
+
+fn vga_restore_color(): {
+    [VGA_VT_C] = [VGA_VT_SC];
+};
+
+fn vga_clear(): {
+    u32 ptr = VGA_BUFFER_BASE;
+    u32 col = [VGA_VT_C] << 8;
+
+    while (ptr <= 0xb9000): {
+        asm {
+            load.l  x0, [fp-8]
+            load.l  x1, [fp-12]
+            store.s [x0], x1
+        };
+
+        ptr = ptr + 2;
+    };
+};
+
+>>>>>>> Stashed changes
 fn vga_print(x: int, y: int, str: u32, col: u8): {
     char c = [str] & 0xff;
 
@@ -97,6 +130,7 @@ fn vga_vt_newline(): {
 fn vga_vt_putchar(c: char): {
     int vt_x = [VGA_VT_X];
     int vt_y = [VGA_VT_Y];
+    int vt_c = [VGA_VT_C];
 
     if (vt_x == VGA_BUFFER_WIDTH): {
         vga_vt_newline();
@@ -108,7 +142,29 @@ fn vga_vt_putchar(c: char): {
         return 0;
     };
 
-    vga_write_char([vt_x], [vt_y], [c], 0x07);
+    vga_write_char([vt_x], [vt_y], [c], [vt_c]);
     
     [VGA_VT_X] = vt_x + 1;
 };
+<<<<<<< Updated upstream
+=======
+
+fn vga_vt_print(str: u32): {
+    char c = [str++] & 0xff;
+
+    while (c): {
+        vga_vt_putchar([c]);
+
+        c = [str++] & 0xff;
+    };
+};
+
+fn vga_vt_clear(): {
+    vga_clear();
+
+    [VGA_VT_X] = 0;
+    [VGA_VT_Y] = 0;
+    [VGA_VT_SX] = 0;
+    [VGA_VT_SY] = 0;
+};
+>>>>>>> Stashed changes

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "../parser/expressions/type.hpp"
 #include "../parser/parser.hpp"
 #include "../error.hpp"
 #include "../cli.hpp"
@@ -124,7 +123,7 @@ namespace hs {
         }
 
         uint32_t generate_impl(expression_t* expr, int base, bool pointer = false, bool inside_fn = false) {
-            switch (expr->get_type()) {
+            switch (expr->get_expr_type()) {
                 case EX_IF_ELSE: {
                     if_else_t* ie = (if_else_t*)expr;
 
@@ -411,7 +410,7 @@ namespace hs {
                 case EX_ARRAY_ACCESS: {
                     array_access_t* aa = (array_access_t*)expr;
 
-                    if (aa->type_or_name->get_type() != EX_TYPE) {
+                    if (aa->type_or_name->get_expr_type() != EX_TYPE) {
                         binary_op_t* bo = new binary_op_t;
 
                         bo->lhs = aa->addr;
@@ -439,7 +438,7 @@ namespace hs {
                 case EX_ASSIGNMENT: {
                     assignment_t* ae = (assignment_t*)expr;
 
-                    ae->assignee->get_type();
+                    ae->assignee->get_expr_type();
 
                     int rhs = generate_impl(ae->value, base, false, inside_fn);
                     int lhs = generate_impl(ae->assignee, base + rhs, true, inside_fn);
@@ -519,7 +518,7 @@ namespace hs {
                 m_functions.back().push_back({IR_LABEL, "DA" + std::to_string(i++)});
                 
                 for (expression_t* expr : arr.values) {
-                    switch (expr->get_type()) {
+                    switch (expr->get_expr_type()) {
                         case EX_NUMERIC_LITERAL: {
                             numeric_literal_t* nl = (numeric_literal_t*)expr;
 
