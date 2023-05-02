@@ -91,42 +91,6 @@ namespace hs {
 #define IGNORE_WHITESPACE \
     while (std::isspace(c)) c = stream.get();
 
-        std::vector <std::string> split_signature(std::string sig) {
-            std::vector <std::string> tokens;
-
-            std::stringstream stream(sig);
-
-            char c = stream.get();
-
-            while (!stream.eof()) {
-                while (std::isspace(c))
-                    c = stream.get();
-                
-                if (stream.eof())
-                    break;
-                
-                std::string token;
-
-                if ((c == '_') || std::isalpha(c)) {
-                    while ((c == '_') || std::isalnum(c)) {
-                        token.push_back(c);
-
-                        c = stream.get();
-                    }
-                } else {
-                    while (c == '*') {
-                        token.push_back(c);
-
-                        c = stream.get();
-                    }
-                }
-                
-                tokens.push_back(token);
-            }
-
-            return tokens;
-        }
-
         void add_type(std::string signature, hs_type_t* type) {
             if (!type_map.contains(signature))
                 type_map[signature] = type;
