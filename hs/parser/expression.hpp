@@ -10,6 +10,8 @@
 namespace hs {
     enum eval_type_t {
         ET_NULL,
+        ET_STRING,
+        ET_FUNCTION,
         ET_NUMERIC
     };
 
@@ -19,6 +21,7 @@ namespace hs {
         EX_RAW_MEMORY_ACCESS,
         EX_ASSIGNMENT,
         EX_BINARY_OP,
+        EX_UNARY_OP,
         EX_COMP_OP,
         EX_EXPRESSION_BLOCK,
         EX_FUNCTION_CALL,

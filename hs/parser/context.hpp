@@ -18,14 +18,12 @@
 
 namespace hs {
     struct contextualizer_t {
-        parser_output_t* m_po;
-        std::stack <std::string> m_scope;
-        error_logger_t* m_logger;
-
-        std::vector <std::string> m_dummy;
-
-        std::vector <std::string> m_vars_in_global_scope;
-        std::stack <std::vector <std::string>> m_vars_in_current_scope;
+        parser_output_t*                        m_po;
+        std::stack <std::string>                m_scope;
+        error_logger_t*                         m_logger;
+        std::vector <std::string>               m_dummy;
+        std::vector <std::string>               m_vars_in_global_scope;
+        std::stack <std::vector <std::string>>  m_vars_in_current_scope;
 
         void init(parser_t* parser, error_logger_t* logger) {
             m_po = parser->get_output();
@@ -58,8 +56,6 @@ namespace hs {
         }
 
         void contextualize_impl(expression_t* expr) {
-            // _log(debug, "contextualizing:\n%s", expr->print(0).c_str());
-
             switch (expr->get_expr_type()) {
                 case EX_FUNCTION_DEF: {
                     function_def_t* fd = (function_def_t*)expr;
@@ -89,7 +85,7 @@ namespace hs {
 
                     m_vars_in_current_scope.push(m_dummy);
 
-                    for (function_arg_t& arg : fd->args) {
+                    for (definition_t& arg : fd->args) {
                         m_vars_in_current_scope.top().push_back(arg.name);
 
                         arg.name = fd->name + "." + arg.name;
@@ -185,7 +181,8 @@ namespace hs {
                 case EX_ARRAY_ACCESS: {
                     array_access_t* aa = (array_access_t*)expr;
 
-                    contextualize_impl(aa->type_or_name);
+                    // To-do: Rewrite array access, turn into
+                    // operator with LHS and RHS
                     contextualize_impl(aa->addr);
                 } break;
 

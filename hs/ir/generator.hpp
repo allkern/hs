@@ -199,7 +199,7 @@ namespace hs {
 
                     int arg_frame_pos = 1;
 
-                    for (function_arg_t& arg : fd->args) {
+                    for (definition_t& arg : fd->args) {
                         m_current_num_args.top()++;
                         
                         append({IR_DEFINE, get_variable_name(arg.name), "[fp-" + std::to_string(4 * (arg_frame_pos++)) + "]"});
@@ -207,7 +207,8 @@ namespace hs {
                         variable_t var;
 
                         var.address = m_current_num_args.top() * 4;
-                        var.type = arg.type;
+                        //var.type = arg.type;
+                        // To-do fix
 
                         m_local_maps.top().insert({arg.name, var});
                     }
@@ -230,7 +231,7 @@ namespace hs {
                         append({IR_ADDSP, std::to_string(m_current_num_locals.top() * 4)});
                     }
 
-                    for (function_arg_t& arg : fd->args) {
+                    for (definition_t& arg : fd->args) {
                         append({IR_UNDEF, get_variable_name(arg.name)});
                     }
 
@@ -356,13 +357,13 @@ namespace hs {
 
                             variable_t var = m_local_maps.top()[nr->name];
 
-                            std::string size = std::to_string(types[var.type]);
+                            std::string size = "4"; // To-do std::to_string(types[var.type]);
 
                             append({IR_LOADF, "R" + std::to_string(base), std::to_string(var.address), size});
                         } else {
                             variable_t var = m_local_maps.top()[nr->name];
 
-                            std::string size = std::to_string(types[var.type]);
+                            std::string size = "4"; // To-do std::to_string(types[var.type]);
 
                             // Else, load the address in stack 
                             append({IR_LEAF, "R" + std::to_string(base), std::to_string(var.address), size});
@@ -410,29 +411,31 @@ namespace hs {
                 case EX_ARRAY_ACCESS: {
                     array_access_t* aa = (array_access_t*)expr;
 
-                    if (aa->type_or_name->get_expr_type() != EX_TYPE) {
-                        binary_op_t* bo = new binary_op_t;
+                    // To-do
 
-                        bo->lhs = aa->addr;
-                        bo->rhs = aa->type_or_name;
-                        bo->op = "+";
+                    // if (aa->type_or_name->get_expr_type() != EX_TYPE) {
+                    //     binary_op_t* bo = new binary_op_t;
 
-                        int a = generate_impl(bo, base, false, inside_fn);
+                    //     bo->lhs = aa->addr;
+                    //     bo->rhs = aa->type_or_name;
+                    //     bo->op = "+";
 
-                        if (!pointer) { 
-                            append({IR_LOADR, "R" + std::to_string(base), "R" + std::to_string(base)});
-                        }
+                    //     int a = generate_impl(bo, base, false, inside_fn);
 
-                        return a;
-                    } else {
-                        int addr = generate_impl(aa->addr, base, false, inside_fn);
+                    //     if (!pointer) { 
+                    //         append({IR_LOADR, "R" + std::to_string(base), "R" + std::to_string(base)});
+                    //     }
 
-                        if (!pointer) { 
-                            append({IR_LOADR, "R" + std::to_string(base), "R" + std::to_string(base)});
-                        }
+                    //     return a;
+                    // } else {
+                    //     int addr = generate_impl(aa->addr, base, false, inside_fn);
 
-                        return addr;
-                    }
+                    //     if (!pointer) { 
+                    //         append({IR_LOADR, "R" + std::to_string(base), "R" + std::to_string(base)});
+                    //     }
+
+                    //     return addr;
+                    // }
                 } break;
 
                 case EX_ASSIGNMENT: {

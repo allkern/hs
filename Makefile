@@ -5,7 +5,7 @@ OS_INFO := $(shell uname -rmo)
 bin/hs main.cpp:
 	mkdir -p bin
 
-	c++ main.cpp -o bin/hs -std=c++2a -g \
+	c++ main.cpp hs/parser/parser.cpp -o bin/hs -std=c++2a -g \
 		-DOS_VERSION="$(OS_INFO)" \
 		-DHS_VERSION="$(VERSION_TAG)" \
 		-DHS_COMMIT_HASH="$(COMMIT_HASH)"
