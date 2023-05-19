@@ -74,8 +74,6 @@ fn vga_scroll(): {
     vga_memset([bottom], 0, VGA_LINE_WIDTH);
 };
 
-<<<<<<< Updated upstream
-=======
 fn vga_set_color(bg: u8, fg: u8): {
     [VGA_VT_SC] = [VGA_VT_C];
     [VGA_VT_C] = (bg << 4) | fg;
@@ -100,7 +98,6 @@ fn vga_clear(): {
     };
 };
 
->>>>>>> Stashed changes
 fn vga_print(x: int, y: int, str: u32, col: u8): {
     char c = [str] & 0xff;
 
@@ -146,8 +143,6 @@ fn vga_vt_putchar(c: char): {
     
     [VGA_VT_X] = vt_x + 1;
 };
-<<<<<<< Updated upstream
-=======
 
 fn vga_vt_print(str: u32): {
     char c = [str++] & 0xff;
@@ -167,4 +162,3 @@ fn vga_vt_clear(): {
     [VGA_VT_SX] = 0;
     [VGA_VT_SY] = 0;
 };
->>>>>>> Stashed changes
