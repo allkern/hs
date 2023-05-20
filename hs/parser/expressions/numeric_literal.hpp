@@ -28,7 +28,15 @@ namespace hs {
         }
         
         hs_type_t* get_hs_type() override {
-            return nullptr; /* To-do */
+            if (value & 0xffff0000) {
+                return g_base_type_map["u32"];
+            } else if (value & 0x0000ff00) {
+                return g_base_type_map["u16"];
+            } else if (value & 0x000000ff) {
+                return g_base_type_map["u8"];
+            }
+
+            return g_base_type_map["u32"];
         }
     };
 }

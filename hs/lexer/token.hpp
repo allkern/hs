@@ -44,6 +44,7 @@ namespace hs {
         LT_KEYWORD_BLOB,
         LT_KEYWORD_MUT,
         LT_KEYWORD_STATIC,
+        LT_KEYWORD_TYPEDEF,
         LT_ASM_BLOCK
     };
 
@@ -64,7 +65,8 @@ namespace hs {
         { "blob"    , LT_KEYWORD_BLOB    },
         { "type"    , LT_KEYWORD_TYPE    },
         { "mut"     , LT_KEYWORD_MUT     },
-        { "static"  , LT_KEYWORD_STATIC  }
+        { "static"  , LT_KEYWORD_STATIC  },
+        { "typedef" , LT_KEYWORD_TYPEDEF }
     };
 
     std::string lexer_token_type_names[] = {

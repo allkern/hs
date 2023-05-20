@@ -6,6 +6,27 @@
 #include "parser.hpp"
 #include "output.hpp"
 
+#include "expressions/expression_block.hpp"
+#include "expressions/numeric_literal.hpp"
+#include "expressions/string_literal.hpp"
+#include "expressions/function_call.hpp"
+#include "expressions/array_access.hpp"
+#include "expressions/variable_def.hpp"
+#include "expressions/function_def.hpp"
+#include "expressions/assignment.hpp"
+#include "expressions/while_loop.hpp"
+#include "expressions/asm_block.hpp"
+#include "expressions/binary_op.hpp"
+#include "expressions/name_ref.hpp"
+#include "expressions/unary_op.hpp"
+#include "expressions/comp_op.hpp"
+#include "expressions/if_else.hpp"
+#include "expressions/return.hpp"
+#include "expressions/invoke.hpp"
+#include "expressions/array.hpp"
+#include "expressions/blob.hpp"
+
+#include <algorithm>
 #include <string>
 #include <stack>
 

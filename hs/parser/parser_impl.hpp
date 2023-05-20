@@ -1,4 +1,28 @@
+#pragma once
+
 #include "parser.hpp"
+
+#include "expressions/expression_block.hpp"
+#include "expressions/numeric_literal.hpp"
+#include "expressions/numeric_literal_parser.hpp"
+#include "expressions/string_literal.hpp"
+#include "expressions/function_call.hpp"
+#include "expressions/array_access.hpp"
+#include "expressions/variable_def.hpp"
+#include "expressions/function_def.hpp"
+#include "expressions/function_def_parser.hpp"
+#include "expressions/assignment.hpp"
+#include "expressions/while_loop.hpp"
+#include "expressions/asm_block.hpp"
+#include "expressions/binary_op.hpp"
+#include "expressions/name_ref.hpp"
+#include "expressions/unary_op.hpp"
+#include "expressions/comp_op.hpp"
+#include "expressions/if_else.hpp"
+#include "expressions/return.hpp"
+#include "expressions/invoke.hpp"
+#include "expressions/array.hpp"
+#include "expressions/blob.hpp"
 
 #define ERROR(msg) \
     if (m_logger) m_logger->print_error( \
@@ -6,8 +30,16 @@
         msg, \
         m_current.line, m_current.offset, m_current.text.size() \
     ); \
+    std::exit(1);
 
 namespace hs {
+    typedef expression_t* (*expression_parser_t)(parser_t*, expression_t*);
+
+    std::unordered_map <expression_type_t, expression_parser_t> g_expression_parsers = {
+        { EX_FUNCTION_DEF   , parse_function_def    },
+        { EX_NUMERIC_LITERAL, parse_numeric_literal }
+    };
+
     void parser_t::init(stream_t <lexer_token_t>* input, error_logger_t* logger) {
         m_input = input;
         m_logger = logger;
@@ -36,15 +68,15 @@ namespace hs {
         return true;
     }
 
-    expression_t* parser_t::expect_expr(parser_expression_t pt, expression_t* arg) {
-        expression_parser_t p = m_expression_parsers[pt];
+    expression_t* parser_t::expect_expr(expression_type_t et, expression_t* arg = nullptr) {
+        expression_parser_t p = g_expression_parsers[et];
 
         assert(p);
 
         expression_t* expr = p(this, arg);
 
         if (!expr) {
-            ERROR(fmt("Expected " ESCAPE(37) "\'%s\'", parser_expression_hr_names[pt]));
+            ERROR(fmt("Expected " ESCAPE(37) "\'%s\'", parser_expression_hr_names[et]));
 
             return nullptr;
         }
@@ -52,8 +84,8 @@ namespace hs {
         return expr;
     }
 
-    expression_t* parser_t::try_expr(parser_expression_t pt, expression_t* arg) {
-        expression_parser_t p = m_expression_parsers[pt];
+    expression_t* parser_t::try_expr(expression_type_t et, expression_t* arg = nullptr) {
+        expression_parser_t p = g_expression_parsers[et];
 
         assert(p);
 
@@ -70,16 +102,50 @@ namespace hs {
         return expr;
     }
 
-    lexer_token_t parser_t::consume() {
+    void parser_t::init_expr(expression_t* expr) {
+        expr->line = m_current.line;
+        expr->offset = m_current.offset;
+        expr->len = m_current.text.size();
+    }
+
+    std::string parser_t::get_anonymous_function_name() {
+        std::string name = "<anonymous_";
+
+        name += std::to_string(m_anonymous_functions++);
+        name += ">";
+
+        return name;
+    }
+
+    type_system_t* parser_t::type_system() {
+        return &m_ts;
+    }
+
+    bool parser_t::is_type() {
+        return  m_ts.exists(m_current.text) ||
+                is_type_modifier() ||
+                (m_current.type == LT_KEYWORD_FN);
+    }
+
+    void parser_t::consume() {
         m_current = m_input->get();
+    }
+
+    inline lexer_token_t parser_t::current() {
+        return m_current;
     }
 
     expression_t* parser_t::parse_expression_impl() {
         expression_t* expr;
-    
+
         switch (m_current.type) {
             case LT_KEYWORD_FN: {
-                expr = parse_function_def();
+                // Definition (function type)
+                if (m_input->peek().type == LT_STAR) {
+                    hs_type_t* type = parse_type();
+                } else {
+                    expr = expect_expr(EX_FUNCTION_DEF);
+                }
             } break;
 
             case LT_IDENT: {
@@ -88,7 +154,13 @@ namespace hs {
                 } else {
                     // Definition
                     hs_type_t* type = parse_type();
+
+                    // Parse remaining stuff
                 }
+            } break;
+
+            case LT_LITERAL_NUMERIC: {
+                expr = expect_expr(EX_NUMERIC_LITERAL);
             } break;
 
             case LT_KEYWORD_MUT: {
@@ -106,9 +178,78 @@ namespace hs {
     }
 
     inline bool parser_t::is_type_modifier() {
-        return  (m_current.type == LT_KEYWORD_MUT   ) ||
-                (m_current.type == LT_KEYWORD_STATIC) ||
-                (m_current.type == LT_KEYWORD_CONST );
+        return (m_current.type == LT_KEYWORD_MUT   ) ||
+               (m_current.type == LT_KEYWORD_STATIC) ||
+               (m_current.type == LT_KEYWORD_CONST );
+    }
+
+    function_type_t* parser_t::parse_function_type() {
+        std::string signature;
+
+        if (m_current.type != LT_KEYWORD_FN) {
+            return nullptr;
+        }
+
+        function_type_t* fnt = new function_type_t;
+
+        consume();
+
+        if (m_current.type != LT_STAR) {
+            // Error: expected * after fn on function pointer
+            // definition
+
+            return nullptr;
+        }
+
+        consume();
+
+        switch (m_current.type) {
+            case LT_ARROW: {
+                consume();
+
+                fnt->return_type = parse_type();
+                fnt->signature = get_signature(fnt);
+
+                return fnt;
+            } break;
+
+            case LT_OPENING_PARENT: {
+                consume();
+
+                while (m_current.type != LT_CLOSING_PARENT) {
+                    definition_t def = parse_definition();
+
+                    fnt->args.push_back(def);
+
+                    switch (m_current.type) {
+                        case LT_COMMA: {
+                            consume();
+                        } break;
+
+                        default: {
+                            // Error: expected , or )
+                        } break;
+                    }
+                }
+
+                consume();
+
+                if (m_current.type != LT_ARROW) {
+                    // Error: expected return type
+
+                    return nullptr;
+                }
+
+                consume();
+
+                fnt->return_type = parse_type();
+                fnt->signature = get_signature(fnt);
+
+                return fnt;
+            } break;
+        }
+
+        return nullptr;
     }
 
     hs_type_t* parser_t::parse_type() {
@@ -129,6 +270,23 @@ namespace hs {
             signature.push_back(' ');
 
             m_current = m_input->get();
+        }
+
+        // Function pointer
+        if (m_current.type == LT_KEYWORD_FN) {
+            function_type_t* fty = parse_function_type();
+
+            if (m_ts.exists(fty->signature)) {
+                std::string fty_sig = fty->signature;
+
+                delete fty;
+
+                return m_ts.get_type(fty_sig);
+            } else {
+                m_ts.add_type(fty->signature, fty);
+
+                return fty;
+            }
         }
 
         if (!m_ts.exists(m_current.text)) {
@@ -157,6 +315,46 @@ namespace hs {
         _log(debug, "signature=%s", signature.c_str());
 
         m_ts.add_type(signature, type);
+
+        return type;
+    }
+
+    definition_t parser_t::parse_definition() {
+        definition_t def;
+
+        if (is_type()) {
+            def.type = parse_type();
+
+            return def;
+        } else {
+            if (m_current.type != LT_IDENT) {
+                // Error: Expected name or type
+
+                return def;
+            }
+
+            def.name = m_current.text;
+
+            m_current = m_input->get();
+
+            if (m_current.type != LT_COLON) {
+                // Error: Expected :
+
+                return def;
+            }
+
+            m_current = m_input->get();
+
+            if (!is_type()) {
+                // Error: Expected type
+
+                return def;
+            }
+
+            def.type = parse_type();
+        }
+
+        return def;
     }
 
     // -- Support functions --
@@ -284,6 +482,12 @@ namespace hs {
 
         while (m_current.type != LT_NONE) {
             expression_t* expr = parse_expression();
+
+            if (m_current.type != LT_SEMICOLON) {
+                // Error, expected semicolon
+            }
+
+            m_current = m_input->get();
 
             m_output.source.push_back(expr);
         }

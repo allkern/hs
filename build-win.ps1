@@ -7,4 +7,4 @@ md -Force -Path bin > $null
 c++ main.cpp -o "bin/hs.exe" -std=c++20 `
     -DOS_VERSION="`"$($OS_INFO)`"" `
     -DHS_VERSION="`"$($VERSION_TAG)`"" `
-    -DHS_COMMIT_HASH="`"$($COMMIT_HASH)`""
+    -DHS_COMMIT_HASH="`"$($COMMIT_HASH)`"" -g

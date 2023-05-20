@@ -11,6 +11,7 @@
 
 #include "lexer/lexer.hpp"
 #include "parser/parser.hpp"
+#include "parser/parser_impl.hpp"
 #include "parser/context.hpp"
 #include "preprocessor/preprocessor.hpp"
 #include "ir/generator.hpp"
@@ -360,6 +361,8 @@ namespace hs {
 
             m_parser.init(m_lexer.get_output(), &m_logger);
             m_parser.parse();
+
+            return true;
 
             m_context.init(&m_parser, &m_logger);
             m_context.contextualize();
