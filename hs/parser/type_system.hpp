@@ -121,7 +121,6 @@ namespace hs {
                     signature.push_back('(');
 
                     for (int i = 0; i < fty->args.size(); i++) {
-                        _log(debug, "fty->mut=%u", fty->args[i].type->mut);
                         signature.append(get_signature(fty->args[i].type));
                         signature.push_back(',');
                     }

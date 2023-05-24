@@ -4,13 +4,11 @@
 
 #include "expressions/expression_block.hpp"
 #include "expressions/numeric_literal.hpp"
-#include "expressions/numeric_literal_parser.hpp"
 #include "expressions/string_literal.hpp"
 #include "expressions/function_call.hpp"
 #include "expressions/array_access.hpp"
 #include "expressions/variable_def.hpp"
 #include "expressions/function_def.hpp"
-#include "expressions/function_def_parser.hpp"
 #include "expressions/assignment.hpp"
 #include "expressions/while_loop.hpp"
 #include "expressions/asm_block.hpp"
@@ -23,6 +21,10 @@
 #include "expressions/invoke.hpp"
 #include "expressions/array.hpp"
 #include "expressions/blob.hpp"
+
+#include "parsers/numeric_literal.hpp"
+#include "parsers/function_def.hpp"
+#include "parsers/variable_def.hpp"
 
 #define ERROR(msg) \
     if (m_logger) m_logger->print_error( \
@@ -37,7 +39,8 @@ namespace hs {
 
     std::unordered_map <expression_type_t, expression_parser_t> g_expression_parsers = {
         { EX_FUNCTION_DEF   , parse_function_def    },
-        { EX_NUMERIC_LITERAL, parse_numeric_literal }
+        { EX_NUMERIC_LITERAL, parse_numeric_literal },
+        { EX_VARIABLE_DEF   , parse_variable_def    }
     };
 
     error_logger_t* parser_t::get_logger() {
@@ -128,7 +131,8 @@ namespace hs {
     bool parser_t::is_type() {
         return  m_ts.exists(m_current.text) ||
                 is_type_modifier() ||
-                (m_current.type == LT_KEYWORD_FN);
+                (m_current.type == LT_KEYWORD_FN) ||
+                (m_current.type == LT_KEYWORD_TYPEDEF);
     }
 
     void parser_t::consume() {
@@ -146,7 +150,7 @@ namespace hs {
             case LT_KEYWORD_FN: {
                 // Definition (function type)
                 if (m_input->peek().type == LT_STAR) {
-                    hs_type_t* type = parse_type();
+                    expr = expect_expr(EX_VARIABLE_DEF);
                 } else {
                     expr = expect_expr(EX_FUNCTION_DEF);
                 }
@@ -157,9 +161,7 @@ namespace hs {
                     // Name ref
                 } else {
                     // Definition
-                    hs_type_t* type = parse_type();
-
-                    // Parse remaining stuff
+                    expr = expect_expr(EX_VARIABLE_DEF);
                 }
             } break;
 
@@ -169,9 +171,7 @@ namespace hs {
 
             case LT_KEYWORD_MUT: case LT_KEYWORD_STATIC:
             case LT_KEYWORD_TYPEDEF: {
-                hs_type_t* type = parse_type();
-
-                expr = nullptr;
+                expr = expect_expr(EX_VARIABLE_DEF);
             } break;
 
             default: {

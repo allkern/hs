@@ -8,7 +8,7 @@
 
 namespace hs {
     struct variable_def_t : public expression_t {
-        std::string type;
+        hs_type_t* type;
         std::string name;
 
         std::string print(int hierarchy) override {
@@ -29,7 +29,8 @@ namespace hs {
         }
         
         hs_type_t* get_hs_type() override {
-            return nullptr; /* To-do */
+            // Can't optimize compiler memory usage here
+            return new pointer_type_t(type);
         }
     };
 }

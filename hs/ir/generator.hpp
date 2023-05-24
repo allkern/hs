@@ -304,7 +304,7 @@ namespace hs {
                         variable_t var;
 
                         var.address = (m_current_num_locals.top() + m_current_num_args.top()) * 4;
-                        var.type = vd->type;
+                        //var.type = vd->type;
 
                         m_local_maps.top().insert({vd->name, var});
                     }

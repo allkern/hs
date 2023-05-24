@@ -4,7 +4,7 @@
 #include "../type_system.hpp"
 #include "../parser.hpp"
 
-#include "numeric_literal.hpp"
+#include "../expressions/numeric_literal.hpp"
 
 #include <string>
 #include <vector>
