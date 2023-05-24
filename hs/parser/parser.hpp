@@ -56,6 +56,7 @@ namespace hs {
         int m_anonymous_functions = 0;
 
     public:
+        error_logger_t* get_logger();
         std::string get_anonymous_function_name();
         void init(stream_t <lexer_token_t>*, error_logger_t*);
         parser_output_t* get_output();

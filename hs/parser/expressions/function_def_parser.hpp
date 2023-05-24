@@ -8,6 +8,14 @@
 #include <vector>
 #include <sstream>
 
+#define ERROR(msg) \
+    if (parser->get_logger()) parser->get_logger()->print_error( \
+        "parser", \
+        msg, \
+        parser->current().line, parser->current().offset, parser->current().text.size() \
+    ); \
+    std::exit(1);
+
 namespace hs {
     // fn: expr
     // fn name: expr
@@ -25,6 +33,7 @@ namespace hs {
 
         parser->init_expr(fd);
 
+        // Consume "fn"
         parser->consume();
 
         while (parser->current().type != LT_COLON) {
@@ -77,6 +86,10 @@ namespace hs {
 
                 fd->return_type = parser->parse_type();
 
+                if (!fd->return_type) {
+                    ERROR("Identifier does not name a type");
+                }
+
                 continue;
             }
         }
@@ -125,3 +138,5 @@ namespace hs {
         return fd;
     }
 }
+
+#undef ERROR

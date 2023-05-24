@@ -40,6 +40,10 @@ namespace hs {
         { EX_NUMERIC_LITERAL, parse_numeric_literal }
     };
 
+    error_logger_t* parser_t::get_logger() {
+        return m_logger;
+    }
+
     void parser_t::init(stream_t <lexer_token_t>* input, error_logger_t* logger) {
         m_input = input;
         m_logger = logger;
@@ -149,7 +153,7 @@ namespace hs {
             } break;
 
             case LT_IDENT: {
-                if (!m_ts.exists(m_current.text)) {
+                if (!is_type()) {
                     // Name ref
                 } else {
                     // Definition
@@ -163,8 +167,11 @@ namespace hs {
                 expr = expect_expr(EX_NUMERIC_LITERAL);
             } break;
 
-            case LT_KEYWORD_MUT: {
+            case LT_KEYWORD_MUT: case LT_KEYWORD_STATIC:
+            case LT_KEYWORD_TYPEDEF: {
                 hs_type_t* type = parse_type();
+
+                expr = nullptr;
             } break;
 
             default: {
@@ -289,6 +296,25 @@ namespace hs {
             }
         }
 
+        if (m_current.type == LT_KEYWORD_TYPEDEF) {
+            m_current = m_input->get();
+
+            hs_type_t* type = parse_type();
+
+            if (m_current.type != LT_IDENT) {
+                ERROR("Expected typedef alias");
+                // Error: Expected typedef name
+
+                return nullptr;
+            }
+
+            m_ts.type_def(m_current.text, type->signature);
+
+            m_current = m_input->get();
+
+            return type;
+        }
+
         if (!m_ts.exists(m_current.text)) {
             // Error: expected a type after type modifier
 
@@ -312,7 +338,7 @@ namespace hs {
         type->mut = mut;
         type->is_static = is_static;
 
-        _log(debug, "signature=%s", signature.c_str());
+        _log(debug, "signature=%s (%s)", signature.c_str(), type->signature.c_str());
 
         m_ts.add_type(signature, type);
 
@@ -475,9 +501,6 @@ namespace hs {
     }
 
     bool parser_t::parse() {
-        expression_t* lhs;
-        expression_t* op;
-
         m_current = m_input->get();
 
         while (m_current.type != LT_NONE) {
@@ -485,6 +508,7 @@ namespace hs {
 
             if (m_current.type != LT_SEMICOLON) {
                 // Error, expected semicolon
+                ERROR("Expected \';\' before expression");
             }
 
             m_current = m_input->get();

@@ -116,7 +116,7 @@ namespace hs {
                 function_type_t* fty = (function_type_t*)t;
 
                 if (!fty->args.size()) {
-                    return "() -> " + get_signature(fty->return_type);
+                    return "()->" + get_signature(fty->return_type);
                 } else {
                     signature.push_back('(');
 
@@ -153,10 +153,7 @@ namespace hs {
 
     class type_system_t {
         std::unordered_map <std::string, hs_type_t*> type_map;
-
-        std::unordered_map <std::string, std::string> typedef_map = {
-            { "char", "u8" }
-        };
+        std::unordered_map <std::string, std::string> typedef_map;
 
     public:
 #define CONSUME c = stream = get();
@@ -168,6 +165,16 @@ namespace hs {
                 type->signature = signature;
                 type_map[signature] = type;
             }
+        }
+
+        void type_def(std::string alias, std::string target) {
+            if (typedef_map.contains(alias)) {
+                // Warning: typedef already exists
+
+                return;
+            }
+
+            typedef_map[alias] = target;
         }
 
         bool type_eq(hs_type_t* t, hs_type_t* u) {
